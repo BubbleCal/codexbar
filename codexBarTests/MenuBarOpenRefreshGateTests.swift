@@ -1,12 +1,16 @@
 import XCTest
 
 final class MenuBarOpenRefreshGateTests: XCTestCase {
-    func testMenuOpenRefreshUsesLedgerWithoutRefreshingSessionCache() {
-        XCTAssertFalse(MenuBarRefreshOrigin.menuOpen.refreshesSessionCache)
+    func testMenuOpenRefreshScansSessionCacheWithThrottle() {
+        XCTAssertTrue(MenuBarRefreshOrigin.menuOpen.refreshesSessionCache)
+        XCTAssertEqual(MenuBarRefreshOrigin.menuOpen.localCostMinimumInterval, 2 * 60)
+        XCTAssertFalse(MenuBarRefreshOrigin.menuOpen.forcesLocalCostRefresh)
     }
 
-    func testManualRefreshStillRefreshesSessionCache() {
+    func testManualRefreshScansSessionCacheImmediately() {
         XCTAssertTrue(MenuBarRefreshOrigin.manual.refreshesSessionCache)
+        XCTAssertEqual(MenuBarRefreshOrigin.manual.localCostMinimumInterval, 0)
+        XCTAssertTrue(MenuBarRefreshOrigin.manual.forcesLocalCostRefresh)
     }
 
     func testFirstOpenTriggersRefreshWhenIdle() {

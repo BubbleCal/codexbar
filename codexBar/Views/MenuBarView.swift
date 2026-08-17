@@ -104,7 +104,20 @@ enum MenuBarRefreshOrigin: Equatable {
     case menuOpen
     case manual
 
+    /// 会话文件扫描是增量的,菜单打开也扫,靠 localCostMinimumInterval 节流保持秒开。
     var refreshesSessionCache: Bool {
+        true
+    }
+
+    /// 成本汇总节流窗口:手动刷新立即重算,菜单打开最多每 2 分钟真正扫一次。
+    var localCostMinimumInterval: TimeInterval {
+        switch self {
+        case .menuOpen: return 2 * 60
+        case .manual: return 0
+        }
+    }
+
+    var forcesLocalCostRefresh: Bool {
         self == .manual
     }
 }
@@ -2254,8 +2267,8 @@ struct MenuBarView: View {
             now = Date()
             didRequestLocalCostRefresh = true
             store.refreshLocalCostSummary(
-                force: true,
-                minimumInterval: 0,
+                force: origin.forcesLocalCostRefresh,
+                minimumInterval: origin.localCostMinimumInterval,
                 refreshSessionCache: origin.refreshesSessionCache
             )
             refreshRunningThreadAttribution()
@@ -2276,8 +2289,8 @@ struct MenuBarView: View {
         now = Date()
         if didRequestLocalCostRefresh == false {
             store.refreshLocalCostSummary(
-                force: true,
-                minimumInterval: usageRefreshInterval,
+                force: origin.forcesLocalCostRefresh,
+                minimumInterval: origin.localCostMinimumInterval,
                 refreshSessionCache: origin.refreshesSessionCache
             )
         }
