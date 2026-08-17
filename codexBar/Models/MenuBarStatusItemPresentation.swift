@@ -96,7 +96,9 @@ struct MenuBarStatusItemPresentation: Equatable {
         )
     }
 
-    func makeTemplateImage(accessibilityDescription: String) -> NSImage? {
+    /// 常态输出模板图(系统按菜单栏明暗自适应);警告/严重状态把橙/红直接
+    /// 烘焙进非模板位图——按钮 tint + 模板图会被菜单栏 vibrancy 混成近黑色。
+    func makeStatusItemImage(accessibilityDescription: String) -> NSImage? {
         switch self.icon {
         case let .systemSymbol(iconName):
             let image = NSImage(
@@ -108,7 +110,8 @@ struct MenuBarStatusItemPresentation: Equatable {
         case let .usageBars(spec):
             return MenuBarUsageIconRenderer.makeImage(
                 spec: spec,
-                accessibilityDescription: accessibilityDescription
+                accessibilityDescription: accessibilityDescription,
+                tint: self.contentTintColor
             )
         }
     }

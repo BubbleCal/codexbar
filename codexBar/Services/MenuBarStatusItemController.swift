@@ -364,10 +364,12 @@ final class MenuBarStatusItemController: NSObject, NSWindowDelegate {
 
         self.statusItem?.length = presentation.layout.statusItemLength
         button.imagePosition = presentation.layout.imagePosition
-        button.image = presentation.makeTemplateImage(
+        button.image = presentation.makeStatusItemImage(
             accessibilityDescription: MenuBarStatusItemIdentity.accessibilityLabel
         )
-        button.contentTintColor = presentation.contentTintColor
+        // 必须保持 nil:显式 tint 会关闭系统对模板图的菜单栏自适应着色,
+        // 且 tint + 模板图会被 vibrancy 把饱和色混成近黑。警告色已烘焙进位图。
+        button.contentTintColor = nil
         button.attributedTitle = presentation.attributedTitle
         button.setAccessibilityValue(presentation.accessibilityValue)
         button.toolTip = presentation.accessibilityValue.isEmpty ? nil : presentation.accessibilityValue

@@ -431,10 +431,41 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             emphasis: .primary
         )
 
-        let image = presentation.makeTemplateImage(accessibilityDescription: "Codexbar")
+        let image = presentation.makeStatusItemImage(accessibilityDescription: "Codexbar")
 
         XCTAssertNotNil(image)
         XCTAssertEqual(image?.isTemplate, true)
+    }
+
+    func testHealthyUsageBarsImageStaysTemplateForMenuBarAdaptiveTinting() {
+        let presentation = MenuBarStatusItemPresentation(
+            icon: .usageBars(MenuBarUsageIconSpec(displayPercents: [40, 20])),
+            title: "",
+            accessibilityValue: "",
+            emphasis: .primary,
+            layout: .compact
+        )
+
+        let image = presentation.makeStatusItemImage(accessibilityDescription: "Codexbar")
+
+        XCTAssertNotNil(image)
+        XCTAssertEqual(image?.isTemplate, true)
+    }
+
+    func testCriticalUsageBarsImageBakesTintInsteadOfTemplateRendering() {
+        // tint + 模板图会被菜单栏 vibrancy 把饱和色混成近黑,严重状态必须烘焙颜色。
+        let presentation = MenuBarStatusItemPresentation(
+            icon: .usageBars(MenuBarUsageIconSpec(displayPercents: [100, 80])),
+            title: "",
+            accessibilityValue: "",
+            emphasis: .critical,
+            layout: .compact
+        )
+
+        let image = presentation.makeStatusItemImage(accessibilityDescription: "Codexbar")
+
+        XCTAssertNotNil(image)
+        XCTAssertEqual(image?.isTemplate, false)
     }
 
     func testCompactLayoutUsesSquareImageOnlyStatusItem() {
