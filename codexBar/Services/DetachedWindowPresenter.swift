@@ -95,6 +95,8 @@ final class DetachedWindowPresenter: NSObject, NSWindowDelegate {
         window.identifier = NSUserInterfaceItemIdentifier(id)
         window.contentViewController = controller
         window.level = .statusBar
+        // 悬浮面板与菜单面板共用固定深色设计。
+        window.appearance = NSAppearance(named: .darkAqua)
         window.isOpaque = false
         window.backgroundColor = .clear
         window.hasShadow = false

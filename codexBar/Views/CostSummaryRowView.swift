@@ -6,32 +6,53 @@ struct CostSummaryRowView: View {
     let compactTokens: (Int) -> String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 7) {
             HStack {
                 Text("Cost")
                     .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(MenuDesign.textPrimary)
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(MenuDesign.textTertiary)
             }
 
-            Text("Today: \(currency(summary.todayCostUSD)) · \(compactTokens(summary.todayTokens)) tokens")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-                .lineLimit(1)
+            self.summaryLine(
+                label: "Today",
+                cost: summary.todayCostUSD,
+                tokens: summary.todayTokens
+            )
 
-            Text("Last 30 days: \(currency(summary.last30DaysCostUSD)) · \(compactTokens(summary.last30DaysTokens)) tokens")
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-                .lineLimit(1)
+            self.summaryLine(
+                label: "Last 30 days",
+                cost: summary.last30DaysCostUSD,
+                tokens: summary.last30DaysTokens
+            )
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.secondary.opacity(0.06))
-        )
+        .menuCard()
+    }
+
+    private func summaryLine(label: String, cost: Double, tokens: Int) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(label)
+                .font(MenuDesign.secondaryFont)
+                .foregroundColor(MenuDesign.textSecondary)
+
+            Spacer(minLength: 8)
+
+            Text(currency(cost))
+                .font(.system(size: 12, weight: .semibold))
+                .monospacedDigit()
+                .foregroundColor(MenuDesign.textPrimary)
+
+            Text("· \(compactTokens(tokens)) tokens")
+                .font(MenuDesign.captionFont)
+                .monospacedDigit()
+                .foregroundColor(MenuDesign.textTertiary)
+        }
+        .lineLimit(1)
     }
 }
 
@@ -171,13 +192,13 @@ struct CostDetailsPanelView: View {
             alignment: .topLeading
         )
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(NSColor.windowBackgroundColor))
-                .shadow(color: Color.black.opacity(0.12), radius: 10, y: 4)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(MenuDesign.panelSolidFill)
+                .shadow(color: Color.black.opacity(0.28), radius: 12, y: 4)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(MenuDesign.cardStroke, lineWidth: 1)
         )
     }
 
@@ -185,15 +206,17 @@ struct CostDetailsPanelView: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.primary)
                 Text("\(compactTokens(tokens)) tokens")
                     .font(.system(size: 10))
+                    .monospacedDigit()
                     .foregroundColor(.secondary)
             }
             Spacer()
             Text(currency(cost))
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
+                .monospacedDigit()
         }
     }
 

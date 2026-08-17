@@ -788,18 +788,13 @@ struct MenuBarView: View {
     }
 
     private var menuHeader: some View {
-        HStack {
+        HStack(spacing: 8) {
             Text("codexbar")
-                .font(.system(size: 13, weight: .semibold))
+                .font(MenuDesign.panelTitleFont)
+                .foregroundColor(MenuDesign.textPrimary)
 
             if let active = store.activeProvider {
-                Text(active.label)
-                    .font(.system(size: 10, weight: .medium))
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(Color.accentColor.opacity(0.12))
-                    .foregroundColor(.accentColor)
-                    .cornerRadius(4)
+                MenuBadge(text: active.label, color: .accentColor)
             }
 
             Spacer()
@@ -813,7 +808,7 @@ struct MenuBarView: View {
                             .controlSize(.small)
                     } else {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 12, weight: .semibold))
                     }
                 }
                 .frame(width: 16, height: 16)
@@ -822,11 +817,11 @@ struct MenuBarView: View {
             .frame(width: 24, height: 24)
             .contentShape(Rectangle())
             .help(L.refreshUsage)
-            .foregroundColor(isRefreshing ? .accentColor : .secondary)
+            .foregroundColor(isRefreshing ? .accentColor : MenuDesign.textSecondary)
             .disabled(isRefreshing)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 9)
     }
 
     @ViewBuilder
@@ -834,29 +829,31 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 0) {
             if let requestRouteSummary {
                 Divider()
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 5) {
                     Text(requestRouteSummary.title)
-                        .font(.system(size: 11, weight: .medium))
+                        .font(MenuDesign.rowTitleFont)
+                        .foregroundColor(MenuDesign.textPrimary)
                         .lineLimit(1)
                         .truncationMode(.middle)
 
                     Text(requestRouteSummary.detail)
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        .font(MenuDesign.captionFont)
+                        .foregroundColor(MenuDesign.textSecondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
 
                     self.modelSelectionRow(currentModel: requestRouteSummary.model)
                 }
                 .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.vertical, 9)
             } else if let activeProvider = store.activeProvider,
                let activeAccount = store.activeProviderAccount {
                 Divider()
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 5) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(self.activeProviderSummaryTitle(activeProvider: activeProvider, activeAccount: activeAccount))
-                            .font(.system(size: 11, weight: .medium))
+                            .font(MenuDesign.rowTitleFont)
+                            .foregroundColor(MenuDesign.textPrimary)
                             .lineLimit(1)
                             .truncationMode(.middle)
                             .layoutPriority(1)
@@ -867,7 +864,7 @@ struct MenuBarView: View {
                     self.modelSelectionRow(currentModel: store.activeModel)
                 }
                 .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.vertical, 9)
             }
 
             if let pendingAvailability = self.updateCoordinator.pendingAvailability {
@@ -881,12 +878,14 @@ struct MenuBarView: View {
                 VStack(spacing: 8) {
                     Image(systemName: "person.crop.circle.badge.plus")
                         .font(.system(size: 32))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(MenuDesign.textTertiary)
                     Text(L.noAccounts)
-                        .foregroundColor(.secondary)
+                        .font(MenuDesign.bodyFont)
+                        .foregroundColor(MenuDesign.textPrimary)
                     Text("Add an OpenAI account, a custom provider, or OpenRouter.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(MenuDesign.secondaryFont)
+                        .foregroundColor(MenuDesign.textSecondary)
+                        .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
@@ -918,22 +917,33 @@ struct MenuBarView: View {
             }
 
             if let error = self.errorBanner?.message {
-                Divider()
-                HStack {
+                HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.yellow)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.orange)
+                        .padding(.top, 1)
                     Text(error)
-                        .font(.caption)
+                        .font(MenuDesign.secondaryFont)
+                        .foregroundColor(MenuDesign.textPrimary)
                         .lineLimit(3)
-                    Spacer()
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 4)
                     Button {
                         self.clearError()
                     } label: {
                         Image(systemName: "xmark")
+                            .font(.system(size: 9, weight: .semibold))
                     }
                     .buttonStyle(.borderless)
+                    .foregroundColor(MenuDesign.textSecondary)
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .menuCard(
+                    fill: Color.orange.opacity(0.10),
+                    stroke: Color.orange.opacity(0.22)
+                )
+                .padding(.horizontal, 8)
                 .padding(.vertical, 6)
             }
         }
@@ -1046,16 +1056,16 @@ struct MenuBarView: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
-        .foregroundColor(.primary.opacity(0.86))
+        .foregroundColor(MenuDesign.textPrimary)
         .padding(.horizontal, 7)
-        .padding(.vertical, 2)
+        .padding(.vertical, 2.5)
         .background(
             RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(Color.primary.opacity(0.07))
+                .fill(MenuDesign.chipFill)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+                .stroke(MenuDesign.chipStroke, lineWidth: 1)
         )
     }
 
@@ -1092,15 +1102,15 @@ struct MenuBarView: View {
     }
 
     private var menuFooter: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             if let lastUpdate = store.accounts.compactMap({ $0.lastChecked }).max() {
                 Text(relativeTime(lastUpdate))
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .font(MenuDesign.captionFont)
+                    .foregroundColor(MenuDesign.textTertiary)
             } else if let provider = store.activeProvider {
                 Text(provider.hostLabel)
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .font(MenuDesign.captionFont)
+                    .foregroundColor(MenuDesign.textTertiary)
             }
 
             Spacer()
@@ -1117,6 +1127,7 @@ struct MenuBarView: View {
                     .font(.system(size: 12))
             }
             .menuStyle(.borderlessButton)
+            .foregroundColor(MenuDesign.textSecondary)
             .accessibilityLabel(L.openAICSVToolbar)
             .accessibilityIdentifier(OpenAIAccountCSVToolbarUI.accessibilityIdentifier)
             .help(L.openAICSVToolbar)
@@ -1128,6 +1139,7 @@ struct MenuBarView: View {
                     .font(.system(size: 12))
             }
             .buttonStyle(.borderless)
+            .foregroundColor(MenuDesign.textSecondary)
             .accessibilityLabel("login toolbar button")
             .accessibilityIdentifier("codexbar.login-openai.toolbar")
 
@@ -1138,6 +1150,7 @@ struct MenuBarView: View {
                     .font(.system(size: 12))
             }
             .buttonStyle(.borderless)
+            .foregroundColor(MenuDesign.textSecondary)
 
             Button {
                 openSettingsWindow()
@@ -1146,6 +1159,7 @@ struct MenuBarView: View {
                     .font(.system(size: 12))
             }
             .buttonStyle(.borderless)
+            .foregroundColor(MenuDesign.textSecondary)
             .help(L.settings)
 
             Button {
@@ -1158,9 +1172,10 @@ struct MenuBarView: View {
             } label: {
                 let label = languageToggle ? L.languageOverride : L.languageOverride
                 Text(label == nil ? "AUTO" : (label == true ? "中" : "EN"))
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 10, weight: .semibold))
             }
             .buttonStyle(.borderless)
+            .foregroundColor(MenuDesign.textSecondary)
 
             Button {
                 AppLifecycleDiagnostics.shared.markTermination(reason: "quit_button")
@@ -1170,6 +1185,7 @@ struct MenuBarView: View {
                     .font(.system(size: 12))
             }
             .buttonStyle(.borderless)
+            .foregroundColor(MenuDesign.textSecondary)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -1183,10 +1199,11 @@ struct MenuBarView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(L.menuUpdateAvailableTitle(availability.release.version))
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(MenuDesign.textPrimary)
                 Text(L.menuUpdateAvailableSubtitle(availability.currentVersion, availability.release.version))
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .font(MenuDesign.captionFont)
+                    .foregroundColor(MenuDesign.textSecondary)
                     .lineLimit(2)
             }
 
@@ -1195,21 +1212,16 @@ struct MenuBarView: View {
             Button(L.menuUpdateAction) {
                 Task { await self.updateCoordinator.handleToolbarAction() }
             }
+            .controlSize(.small)
             .disabled(self.updateCoordinator.isChecking)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        .background(Color.accentColor.opacity(0.07))
     }
 
     private func openAIAvailabilityBadge(title: String) -> some View {
-        Text(title)
-            .font(.system(size: 10))
-            .lineLimit(1)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(availableCount > 0 ? Color.green.opacity(0.15) : Color.red.opacity(0.15))
-            .foregroundColor(availableCount > 0 ? .green : .red)
-            .cornerRadius(4)
+        MenuBadge(text: title, color: availableCount > 0 ? .green : .red)
             .fixedSize(horizontal: true, vertical: false)
     }
 
@@ -1218,8 +1230,7 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Text("OpenAI")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .menuSectionHeaderStyle()
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .layoutPriority(1)
@@ -1283,7 +1294,7 @@ struct MenuBarView: View {
                     }
                     .buttonStyle(.borderless)
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(runtimeRouteBanner.tone == .warning ? .orange : .secondary)
+                    .foregroundColor(runtimeRouteBanner.tone == .warning ? .orange : MenuDesign.textSecondary)
                     .help(L.aggregateRuntimeClearStaleStickyHint)
                 }
                 .padding(.horizontal, 10)
@@ -1292,17 +1303,16 @@ struct MenuBarView: View {
             if store.accounts.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("No OpenAI account added.")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(MenuDesign.textPrimary)
                     Text("Use the toolbar plus button to add OpenAI OAuth accounts.")
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        .font(MenuDesign.captionFont)
+                        .foregroundColor(MenuDesign.textSecondary)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.secondary.opacity(0.06))
-                )
+                .menuCard()
             } else {
                 AdaptiveMenuScrollContainer(
                     initialHeight: openAIAccountsInitialHeight,
@@ -1336,18 +1346,23 @@ struct MenuBarView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Text("Providers")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.secondary)
+                            .menuSectionHeaderStyle()
 
                         Spacer()
 
                         Text("\(providerCount)")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.secondary)
+                            .font(.system(size: 10, weight: .semibold))
+                            .monospacedDigit()
+                            .foregroundColor(MenuDesign.textSecondary)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(
+                                Capsule().fill(MenuDesign.chipFill)
+                            )
 
                         Image(systemName: "chevron.right")
                             .font(.system(size: 9, weight: .semibold))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(MenuDesign.textTertiary)
                             .rotationEffect(.degrees(isProvidersExpanded ? 90 : 0))
                             .animation(.easeInOut(duration: 0.12), value: isProvidersExpanded)
                     }
@@ -1458,10 +1473,10 @@ struct MenuBarView: View {
     }
 
     private func openAIAccountGroupHeaderLabel(_ group: OpenAIAccountGroup) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
             Text(group.email)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.secondary)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(MenuDesign.textPrimary)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .layoutPriority(1)
@@ -1471,12 +1486,12 @@ struct MenuBarView: View {
                 copiedEmail: self.copiedOpenAIAccountGroupEmail
             ) {
                 Text(copiedConfirmation)
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.green)
                     .lineLimit(1)
             } else if let remark = group.headerQuotaRemark(now: now) {
                 Text(remark)
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.system(size: 10, weight: .medium))
                     .monospacedDigit()
                     .foregroundColor(.orange)
                     .lineLimit(1)
@@ -1485,6 +1500,7 @@ struct MenuBarView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.leading, 4)
+        .padding(.bottom, 2)
     }
 
     private func openAIStatusBanner(
@@ -1503,12 +1519,12 @@ struct MenuBarView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(banner.title)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.primary)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(MenuDesign.textPrimary)
 
                 Text(banner.message)
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .font(MenuDesign.captionFont)
+                    .foregroundColor(MenuDesign.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 if let actionTitle = banner.actionTitle,
@@ -1528,19 +1544,15 @@ struct MenuBarView: View {
                         .font(.system(size: 9, weight: .semibold))
                 }
                 .buttonStyle(.borderless)
-                .foregroundColor(.secondary)
+                .foregroundColor(MenuDesign.textSecondary)
             }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(accentColor.opacity(0.08))
+        .menuCard(
+            fill: accentColor.opacity(0.09),
+            stroke: accentColor.opacity(0.20)
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(accentColor.opacity(0.16), lineWidth: 0.8)
-        }
     }
 
     private func copyOpenAIAccountGroupEmail(_ email: String) {
@@ -2522,7 +2534,7 @@ private struct OpenRouterModelPickerSection: View {
                                     .font(.system(size: 11, weight: .medium))
                                     .foregroundColor(.primary)
                                 Text(model.id)
-                                    .font(.system(size: 9))
+                                    .font(.system(size: 10))
                                     .foregroundColor(.secondary)
                                     .lineLimit(1)
                                     .truncationMode(.middle)
@@ -3058,35 +3070,37 @@ private struct OpenRouterProviderRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Circle()
-                    .fill(isActiveProvider ? Color.accentColor : Color.secondary.opacity(0.5))
-                    .frame(width: 7, height: 7)
-
                 Text(provider.label)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(isActiveProvider ? .accentColor : .primary)
+                    .font(MenuDesign.rowTitleFont)
+                    .foregroundColor(isActiveProvider ? .accentColor : MenuDesign.textPrimary)
 
                 Text(provider.openRouterEffectiveModelID ?? "No model selected")
-                    .font(.system(size: 9))
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
-                    .background(Color.secondary.opacity(0.12))
-                    .foregroundColor(provider.openRouterEffectiveModelID == nil ? .orange : .secondary)
-                    .cornerRadius(3)
+                    .font(.system(size: 10, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1.5)
+                    .background(
+                        RoundedRectangle(cornerRadius: MenuDesign.badgeCornerRadius, style: .continuous)
+                            .fill(provider.openRouterEffectiveModelID == nil ? Color.orange.opacity(0.15) : MenuDesign.chipFill)
+                    )
+                    .foregroundColor(provider.openRouterEffectiveModelID == nil ? .orange : MenuDesign.textSecondary)
 
                 Spacer()
 
                 Button(action: onAddAccount) {
                     Image(systemName: "plus")
-                        .font(.system(size: 10))
+                        .font(.system(size: 11))
                 }
                 .buttonStyle(.borderless)
+                .foregroundColor(MenuDesign.textSecondary)
 
                 Button(action: onEditModel) {
                     Image(systemName: "pencil")
-                        .font(.system(size: 10))
+                        .font(.system(size: 11))
                 }
                 .buttonStyle(.borderless)
+                .foregroundColor(MenuDesign.textSecondary)
             }
 
             Text(
@@ -3098,21 +3112,21 @@ private struct OpenRouterProviderRowView: View {
                         : "\(provider.cachedModelCatalog.count) cached models"
                 )
             )
-            .font(.system(size: 9))
-            .foregroundColor(.secondary)
-            .padding(.leading, 14)
+            .font(MenuDesign.captionFont)
+            .foregroundColor(MenuDesign.textTertiary)
+            .padding(.leading, 13)
 
             if self.orderedPinnedModelIDs.isEmpty == false {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(self.orderedPinnedModelIDs, id: \.self) { modelID in
                         HStack(spacing: 8) {
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: 1) {
                                 Text(self.displayName(for: modelID))
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundColor(.primary)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(MenuDesign.textPrimary)
                                 Text(modelID)
-                                    .font(.system(size: 9))
-                                    .foregroundColor(.secondary)
+                                    .font(MenuDesign.captionFont)
+                                    .foregroundColor(MenuDesign.textTertiary)
                                     .lineLimit(1)
                             }
 
@@ -3120,7 +3134,7 @@ private struct OpenRouterProviderRowView: View {
 
                             if modelID == self.provider.openRouterEffectiveModelID {
                                 Text("Current")
-                                    .font(.system(size: 9, weight: .semibold))
+                                    .font(.system(size: 10, weight: .semibold))
                                     .foregroundColor(.accentColor)
                             } else {
                                 Button("Use") {
@@ -3128,16 +3142,16 @@ private struct OpenRouterProviderRowView: View {
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .controlSize(.mini)
-                                .font(.system(size: 9, weight: .medium))
+                                .font(.system(size: 10, weight: .medium))
                             }
                         }
-                        .padding(.leading, 14)
+                        .padding(.leading, 13)
                     }
                 }
             } else if self.provider.openRouterEffectiveModelID == nil {
                 HStack(spacing: 8) {
                     Text("No model configured yet.")
-                        .font(.system(size: 10, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.orange)
 
                     Spacer()
@@ -3147,15 +3161,16 @@ private struct OpenRouterProviderRowView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.mini)
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 10, weight: .semibold))
                 }
-                .padding(.leading, 14)
+                .padding(.leading, 13)
             }
 
             ForEach(provider.accounts) { account in
                 HStack(spacing: 6) {
                     Text(account.label)
                         .font(.system(size: 11, weight: account.id == activeAccountId ? .semibold : .regular))
+                        .foregroundColor(MenuDesign.textPrimary)
 
                     if account.id == activeAccountId {
                         Image(systemName: "checkmark")
@@ -3166,8 +3181,8 @@ private struct OpenRouterProviderRowView: View {
                     Spacer()
 
                     Text(account.maskedAPIKey)
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(MenuDesign.textTertiary)
                         .lineLimit(1)
 
                     if account.id != activeAccountId || isActiveProvider == false {
@@ -3187,16 +3202,17 @@ private struct OpenRouterProviderRowView: View {
                             .font(.system(size: 10))
                     }
                     .buttonStyle(.borderless)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(MenuDesign.textSecondary)
                 }
-                .padding(.leading, 14)
+                .padding(.leading, 13)
             }
         }
-        .padding(.vertical, 5)
-        .padding(.horizontal, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(isActiveProvider ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.05))
+        .padding(.vertical, 7)
+        .padding(.horizontal, 9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .menuCard(
+            fill: isActiveProvider ? Color.accentColor.opacity(0.10) : MenuDesign.cardFill,
+            stroke: isActiveProvider ? Color.accentColor.opacity(0.30) : MenuDesign.cardStroke
         )
     }
 }

@@ -15,11 +15,9 @@ struct AccountRowView: View {
     @State private var isHoveringPlanBadge = false
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             if self.usesExpandedTeamBadgeHoverLayout == false {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 7, height: 7)
+                self.statusIndicator
             }
 
             self.planBadge
@@ -29,18 +27,21 @@ struct AccountRowView: View {
 
                 if let runningThreadBadgeTitle = rowState.runningThreadBadgeTitle {
                     Text(runningThreadBadgeTitle)
-                        .font(.system(size: 9, weight: .medium))
+                        .font(.system(size: 10, weight: .medium))
+                        .monospacedDigit()
                         .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(Color.secondary.opacity(0.14))
-                        .foregroundColor(.secondary)
-                        .cornerRadius(4)
+                        .padding(.vertical, 1.5)
+                        .background(
+                            RoundedRectangle(cornerRadius: MenuDesign.badgeCornerRadius, style: .continuous)
+                                .fill(MenuDesign.chipFill)
+                        )
+                        .foregroundColor(MenuDesign.textSecondary)
                 }
 
                 if self.rowState.isNextUseTarget {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.accentColor)
-                        .font(.system(size: 10))
+                        .font(.system(size: 11))
                 }
             }
 
@@ -51,7 +52,7 @@ struct AccountRowView: View {
                     .font(.system(size: 10))
             }
             .buttonStyle(.borderless)
-            .foregroundColor(.secondary)
+            .foregroundColor(MenuDesign.textSecondary)
 
             if account.tokenExpired {
                 Button(L.reauth, action: onReauth)
@@ -72,7 +73,7 @@ struct AccountRowView: View {
                         )
                 }
                 .buttonStyle(.borderless)
-                .foregroundColor(isRefreshing ? .accentColor : .secondary)
+                .foregroundColor(isRefreshing ? .accentColor : MenuDesign.textSecondary)
                 .disabled(isRefreshing)
 
                 if self.canPerformManualActivation {
@@ -89,23 +90,32 @@ struct AccountRowView: View {
                 }
             }
         }
-        .padding(.vertical, 5)
-        .padding(.leading, 16)   // indent under email header
+        .padding(.vertical, 6)
+        .padding(.leading, 12)
         .padding(.trailing, 8)
+        .opacity(account.isBanned ? 0.72 : 1)
         .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(rowBackgroundColor)
+            RoundedRectangle(cornerRadius: MenuDesign.rowCornerRadius, style: .continuous)
+                .fill(self.rowState.isNextUseTarget ? Color.accentColor.opacity(0.13) : MenuDesign.insetRowFill)
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(rowBorderColor, lineWidth: 0.6)
+            RoundedRectangle(cornerRadius: MenuDesign.rowCornerRadius, style: .continuous)
+                .strokeBorder(
+                    self.rowState.isNextUseTarget ? Color.accentColor.opacity(0.38) : MenuDesign.cardStroke,
+                    lineWidth: 1
+                )
         }
         .overlay(alignment: .leading) {
             if self.rowState.isNextUseTarget {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.accentColor)
-                    .frame(width: 3)
-                    .padding(.vertical, 4)
+                UnevenRoundedRectangle(
+                    topLeadingRadius: MenuDesign.rowCornerRadius,
+                    bottomLeadingRadius: MenuDesign.rowCornerRadius,
+                    bottomTrailingRadius: 0,
+                    topTrailingRadius: 0,
+                    style: .continuous
+                )
+                .fill(Color.accentColor)
+                .frame(width: 3)
             }
         }
         .contextMenu {
@@ -145,18 +155,19 @@ struct AccountRowView: View {
 
     @ViewBuilder
     private var usageSummary: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             ForEach(Array(account.usageWindowDisplays(mode: self.usageDisplayMode).enumerated()), id: \.offset) { index, window in
                 if index > 0 {
-                    Text("•")
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                    Text("·")
+                        .font(.system(size: 10))
+                        .foregroundColor(MenuDesign.textTertiary)
                 }
                 Text(window.label)
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 10))
+                    .foregroundColor(MenuDesign.textSecondary)
                 Text("\(Int(window.displayPercent))%")
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.system(size: 10, weight: .semibold))
+                    .monospacedDigit()
                     .foregroundColor(usageColor(window))
             }
         }
@@ -169,18 +180,20 @@ struct AccountRowView: View {
                 isHovered: self.isHoveringPlanBadge
             )
         )
-        .font(.system(size: 9, weight: .medium))
+        .font(MenuDesign.badgeFont)
         .lineLimit(1)
         .truncationMode(.tail)
         .allowsTightening(self.usesExpandedTeamBadgeHoverLayout)
         .minimumScaleFactor(self.usesExpandedTeamBadgeHoverLayout ? 0.85 : 1)
         .layoutPriority(self.usesExpandedTeamBadgeHoverLayout ? 1 : 0)
-        .padding(.horizontal, 4)
-        .padding(.vertical, 1)
-        .background(planBadgeColor.opacity(0.15))
+        .padding(.horizontal, 5)
+        .padding(.vertical, 1.5)
+        .background(
+            RoundedRectangle(cornerRadius: MenuDesign.badgeCornerRadius, style: .continuous)
+                .fill(planBadgeColor.opacity(0.17))
+        )
         .foregroundColor(planBadgeColor)
-        .cornerRadius(3)
-        .contentShape(RoundedRectangle(cornerRadius: 3))
+        .contentShape(RoundedRectangle(cornerRadius: MenuDesign.badgeCornerRadius))
         .onHover { isHovering in
             self.isHoveringPlanBadge = isHovering
         }
@@ -193,38 +206,54 @@ struct AccountRowView: View {
         )
     }
 
-    private var statusColor: Color {
-        if account.isBanned { return .red }
+    /// 左侧状态指示:正常账号显示迷你额度环(环长 = 首个窗口的额度比例),
+    /// 异常账号(封禁 / 令牌过期)显示明确的图标,不再用无解释的纯色圆点。
+    @ViewBuilder
+    private var statusIndicator: some View {
+        if account.isBanned {
+            Image(systemName: "nosign")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.red)
+                .frame(width: 14, height: 14)
+        } else if account.tokenExpired {
+            Image(systemName: "exclamationmark.circle.fill")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.orange)
+                .frame(width: 14, height: 14)
+        } else {
+            self.usageRing
+        }
+    }
+
+    private var usageRing: some View {
+        let window = account.usageWindowDisplays(mode: self.usageDisplayMode).first
+        let fraction = window.map { min(max($0.displayPercent / 100, 0), 1) } ?? 0
+        return ZStack {
+            Circle()
+                .stroke(MenuDesign.chipStroke, lineWidth: 2.5)
+            Circle()
+                .trim(from: 0, to: max(fraction, 0.035))
+                .stroke(
+                    self.ringColor(for: window),
+                    style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: 13, height: 13)
+        .padding(.horizontal, 0.5)
+    }
+
+    private func ringColor(for window: UsageWindowDisplay?) -> Color {
         if account.quotaExhausted { return .orange }
-        if account.isBelowVisualWarningThreshold() { return .yellow }
-        return .green
-    }
-
-    private var rowBackgroundColor: Color {
-        if self.rowState.isNextUseTarget { return Color.accentColor.opacity(0.14) }
-        if account.isBanned { return Color.red.opacity(0.045) }
-        if account.quotaExhausted { return Color.orange.opacity(0.05) }
-        if account.isBelowVisualWarningThreshold() {
-            return Color.yellow.opacity(0.05)
-        }
-        return Color.secondary.opacity(0.055)
-    }
-
-    private var rowBorderColor: Color {
-        if self.rowState.isNextUseTarget { return Color.accentColor.opacity(0.28) }
-        if account.isBanned { return Color.red.opacity(0.12) }
-        if account.quotaExhausted { return Color.orange.opacity(0.14) }
-        if account.isBelowVisualWarningThreshold() {
-            return Color.yellow.opacity(0.14)
-        }
-        return Color.primary.opacity(0.08)
+        guard let window else { return MenuDesign.textTertiary }
+        return self.usageColor(window)
     }
 
     private var planBadgeColor: Color {
         switch account.planType.lowercased() {
         case "team": return .blue
         case "plus": return .purple
-        default: return .gray
+        default: return MenuDesign.textSecondary
         }
     }
 

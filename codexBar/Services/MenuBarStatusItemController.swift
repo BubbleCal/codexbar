@@ -156,6 +156,7 @@ private final class FlatStatusItemMenuPanel: NSPanel {
 
 private final class FlatStatusItemMenuContentView: NSView {
     private let visualEffectView = NSVisualEffectView()
+    private let baseTintView = NSView()
     private let hostedContentView: NSView
 
     init(hostedContentView: NSView) {
@@ -163,17 +164,23 @@ private final class FlatStatusItemMenuContentView: NSView {
         super.init(frame: .zero)
 
         self.wantsLayer = true
-        self.layer?.cornerRadius = 18
+        self.layer?.cornerRadius = 16
         self.layer?.masksToBounds = true
         self.layer?.borderWidth = 1
-        self.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.55).cgColor
+        // 面板固定深色,描边用细亮边勾出轮廓,浅色壁纸下也有清晰边界。
+        self.layer?.borderColor = NSColor(calibratedWhite: 1.0, alpha: 0.14).cgColor
 
         self.visualEffectView.material = .popover
         self.visualEffectView.blendingMode = .behindWindow
         self.visualEffectView.state = .active
 
+        // 毛玻璃上叠一层底色,避免壁纸透色把前景文字的对比度吃掉。
+        self.baseTintView.wantsLayer = true
+
         self.addSubview(self.visualEffectView)
+        self.addSubview(self.baseTintView)
         self.addSubview(hostedContentView)
+        self.applyBaseTint()
     }
 
     @available(*, unavailable)
@@ -184,12 +191,19 @@ private final class FlatStatusItemMenuContentView: NSView {
     override func layout() {
         super.layout()
         self.visualEffectView.frame = self.bounds
+        self.baseTintView.frame = self.bounds
         self.hostedContentView.frame = self.bounds
     }
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
-        self.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.55).cgColor
+        self.applyBaseTint()
+    }
+
+    private func applyBaseTint() {
+        self.effectiveAppearance.performAsCurrentDrawingAppearance {
+            self.baseTintView.layer?.backgroundColor = MenuDesign.panelBaseTint.cgColor
+        }
     }
 }
 
@@ -504,6 +518,8 @@ final class MenuBarStatusItemController: NSObject, NSWindowDelegate {
         )
         panel.delegate = self
         panel.isReleasedWhenClosed = false
+        // 菜单固定走深色设计:浅色壁纸下状态点和卡片对比度不稳,深色底能全部立住。
+        panel.appearance = NSAppearance(named: .darkAqua)
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true

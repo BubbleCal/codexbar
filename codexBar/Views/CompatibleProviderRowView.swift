@@ -12,21 +12,21 @@ struct CompatibleProviderRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Circle()
-                    .fill(isActiveProvider ? Color.accentColor : Color.secondary.opacity(0.5))
-                    .frame(width: 7, height: 7)
-
                 Text(provider.label)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(isActiveProvider ? .accentColor : .primary)
+                    .font(MenuDesign.rowTitleFont)
+                    .foregroundColor(isActiveProvider ? .accentColor : MenuDesign.textPrimary)
 
                 Text(provider.hostLabel)
-                    .font(.system(size: 9))
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
-                    .background(Color.secondary.opacity(0.12))
-                    .foregroundColor(.secondary)
-                    .cornerRadius(3)
+                    .font(.system(size: 10, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1.5)
+                    .background(
+                        RoundedRectangle(cornerRadius: MenuDesign.badgeCornerRadius, style: .continuous)
+                            .fill(MenuDesign.chipFill)
+                    )
+                    .foregroundColor(MenuDesign.textSecondary)
 
                 if isActiveProvider {
                     Image(systemName: "checkmark.circle.fill")
@@ -38,22 +38,24 @@ struct CompatibleProviderRowView: View {
 
                 Button(action: onAddAccount) {
                     Image(systemName: "plus")
-                        .font(.system(size: 10))
+                        .font(.system(size: 11))
                 }
                 .buttonStyle(.borderless)
+                .foregroundColor(MenuDesign.textSecondary)
 
                 Button(action: onDeleteProvider) {
                     Image(systemName: "trash")
                         .font(.system(size: 10))
                 }
                 .buttonStyle(.borderless)
-                .foregroundColor(.secondary)
+                .foregroundColor(MenuDesign.textSecondary)
             }
 
             ForEach(provider.accounts) { account in
                 HStack(spacing: 6) {
                     Text(account.label)
                         .font(.system(size: 11, weight: account.id == activeAccountId ? .semibold : .regular))
+                        .foregroundColor(MenuDesign.textPrimary)
 
                     if account.id == activeAccountId {
                         Image(systemName: "checkmark")
@@ -64,8 +66,8 @@ struct CompatibleProviderRowView: View {
                     Spacer()
 
                     Text(account.maskedAPIKey)
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(MenuDesign.textTertiary)
                         .lineLimit(1)
 
                     if account.id != activeAccountId || isActiveProvider == false {
@@ -84,16 +86,17 @@ struct CompatibleProviderRowView: View {
                             .font(.system(size: 10))
                     }
                     .buttonStyle(.borderless)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(MenuDesign.textSecondary)
                 }
-                .padding(.leading, 14)
+                .padding(.leading, 13)
             }
         }
-        .padding(.vertical, 5)
-        .padding(.horizontal, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(isActiveProvider ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.05))
+        .padding(.vertical, 7)
+        .padding(.horizontal, 9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .menuCard(
+            fill: isActiveProvider ? Color.accentColor.opacity(0.10) : MenuDesign.cardFill,
+            stroke: isActiveProvider ? Color.accentColor.opacity(0.30) : MenuDesign.cardStroke
         )
     }
 }
