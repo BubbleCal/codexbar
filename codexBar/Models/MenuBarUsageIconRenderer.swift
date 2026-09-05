@@ -30,33 +30,34 @@ enum MenuBarUsageIconRenderer {
     }
 
     static let pointSize = NSSize(width: 18, height: 18)
+    static let percentPointSize = NSSize(width: 36, height: 22)
     static let backingScale: CGFloat = 2
 
-    private static let canvasPixels = Int(pointSize.width * backingScale)
     private static let barWidthPixels = 30
-    static let primaryPercentTextRect = PixelRect(x: 0, y: 18, width: 36, height: 18)
+    static let primaryPercentTextRect = PixelRect(x: 0, y: 12, width: 72, height: 32)
 
     static func primaryPercentFont(for text: String) -> NSFont {
-        let fontSize: CGFloat = text.count >= 4 ? 6 : 8
-        let font = NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .bold)
-        return NSFontManager.shared.convert(font, toHaveTrait: .condensedFontMask)
+        let fontSize: CGFloat = 12
+        let font = NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .regular)
+        return font
     }
 
     static func barRects(
         windowCount: Int,
         showsPrimaryPercent: Bool = false
     ) -> [PixelRect] {
-        let barX = (self.canvasPixels - self.barWidthPixels) / 2
+        let size = showsPrimaryPercent ? self.percentPointSize : self.pointSize
+        let barX = (Int(size.width * self.backingScale) - self.barWidthPixels) / 2
         if showsPrimaryPercent {
             switch windowCount {
             case 2...:
                 return [
-                    PixelRect(x: barX, y: 10, width: self.barWidthPixels, height: 5),
-                    PixelRect(x: barX, y: 3, width: self.barWidthPixels, height: 5),
+                    PixelRect(x: barX, y: 8, width: self.barWidthPixels, height: 3),
+                    PixelRect(x: barX, y: 3, width: self.barWidthPixels, height: 3),
                 ]
             case 1:
                 return [
-                    PixelRect(x: barX, y: 5, width: self.barWidthPixels, height: 7),
+                    PixelRect(x: barX, y: 4, width: self.barWidthPixels, height: 5),
                 ]
             default:
                 return []
@@ -87,13 +88,9 @@ enum MenuBarUsageIconRenderer {
         )
     }
 
-    /// tint 为 nil 时输出纯黑 + alpha 的模板图,交给系统按菜单栏明暗自适应着色;
-    /// tint 非 nil(警告/严重)时把颜色直接烘焙进非模板位图——tint + 模板图
-    /// 会经过菜单栏 vibrancy 合成,饱和色会被混成近黑色。
     static func makeImage(
         spec: MenuBarUsageIconSpec,
-        accessibilityDescription: String,
-        tint: NSColor? = nil
+        accessibilityDescription: String
     ) -> NSImage? {
         let rects = self.barRects(
             windowCount: spec.displayPercents.count,
@@ -101,11 +98,12 @@ enum MenuBarUsageIconRenderer {
         )
         guard rects.isEmpty == false else { return nil }
 
-        let image = NSImage(size: self.pointSize)
+        let size = spec.primaryPercentText != nil ? self.percentPointSize : self.pointSize
+        let image = NSImage(size: size)
         guard let representation = NSBitmapImageRep(
             bitmapDataPlanes: nil,
-            pixelsWide: self.canvasPixels,
-            pixelsHigh: self.canvasPixels,
+            pixelsWide: Int(size.width * self.backingScale),
+            pixelsHigh: Int(size.height * self.backingScale),
             bitsPerSample: 8,
             samplesPerPixel: 4,
             hasAlpha: true,
@@ -117,7 +115,7 @@ enum MenuBarUsageIconRenderer {
             return nil
         }
 
-        representation.size = self.pointSize
+        representation.size = size
         image.addRepresentation(representation)
 
         NSGraphicsContext.saveGraphicsState()
@@ -126,29 +124,26 @@ enum MenuBarUsageIconRenderer {
             context.cgContext.setShouldAntialias(true)
             context.cgContext.interpolationQuality = .none
 
-            let ink = tint ?? .black
-
             if let primaryPercentText = spec.primaryPercentText {
-                self.drawPrimaryPercent(primaryPercentText, ink: ink)
+                self.drawPrimaryPercent(primaryPercentText)
             }
 
             for (rect, percent) in zip(rects, spec.displayPercents) {
-                self.drawBar(rect: rect, displayPercent: percent, ink: ink)
+                self.drawBar(rect: rect, displayPercent: percent)
             }
         }
         NSGraphicsContext.restoreGraphicsState()
 
-        image.isTemplate = tint == nil
+        image.isTemplate = true
         image.accessibilityDescription = accessibilityDescription
         return image
     }
 
-    private static func drawPrimaryPercent(_ text: String, ink: NSColor) {
+    private static func drawPrimaryPercent(_ text: String) {
         let attributes: [NSAttributedString.Key: Any] = [
             .font: self.primaryPercentFont(for: text),
-            // 模板图内容必须是纯黑 + alpha;动态色(labelColor)在离屏位图里解析不稳,会破坏模板着色。
-            .foregroundColor: ink,
-            .expansion: text.count >= 4 ? 0 : -0.04,
+            // 模板只提供不透明度蒙版，最终颜色由菜单栏决定。
+            .foregroundColor: NSColor.black,
         ]
         let attributedText = NSAttributedString(string: text, attributes: attributes)
         let textSize = attributedText.size()
@@ -160,7 +155,7 @@ enum MenuBarUsageIconRenderer {
         attributedText.draw(at: origin)
     }
 
-    private static func drawBar(rect: PixelRect, displayPercent: Double, ink: NSColor) {
+    private static func drawBar(rect: PixelRect, displayPercent: Double) {
         let barRect = self.pointRect(rect)
         let radius = self.points(rect.height / 2)
         let trackPath = NSBezierPath(
@@ -169,7 +164,7 @@ enum MenuBarUsageIconRenderer {
             yRadius: radius
         )
 
-        ink.withAlphaComponent(0.28).setFill()
+        NSColor.black.withAlphaComponent(0.28).setFill()
         trackPath.fill()
 
         let strokeWidthPixels = rect.height <= 7 ? 1 : 2
@@ -184,7 +179,7 @@ enum MenuBarUsageIconRenderer {
             yRadius: max(0, radius - strokeWidth / 2)
         )
         strokePath.lineWidth = strokeWidth
-        ink.withAlphaComponent(0.44).setStroke()
+        NSColor.black.withAlphaComponent(0.44).setStroke()
         strokePath.stroke()
 
         let fillWidth = self.fillWidthPixels(
@@ -195,7 +190,7 @@ enum MenuBarUsageIconRenderer {
 
         NSGraphicsContext.current?.cgContext.saveGState()
         trackPath.addClip()
-        ink.setFill()
+        NSColor.black.setFill()
         NSBezierPath(
             rect: self.pointRect(
                 PixelRect(

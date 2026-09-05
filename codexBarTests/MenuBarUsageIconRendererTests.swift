@@ -24,24 +24,25 @@ final class MenuBarUsageIconRendererTests: XCTestCase {
         XCTAssertEqual(
             MenuBarUsageIconRenderer.barRects(windowCount: 2, showsPrimaryPercent: true),
             [
-                .init(x: 3, y: 10, width: 30, height: 5),
-                .init(x: 3, y: 3, width: 30, height: 5),
+                .init(x: 21, y: 8, width: 30, height: 3),
+                .init(x: 21, y: 3, width: 30, height: 3),
             ]
         )
         XCTAssertEqual(
             MenuBarUsageIconRenderer.barRects(windowCount: 1, showsPrimaryPercent: true),
-            [.init(x: 3, y: 5, width: 30, height: 7)]
+            [.init(x: 21, y: 4, width: 30, height: 5)]
         )
     }
 
-    func testPrimaryPercentUsesLargeBoldFontForCommonValues() {
+    func testPrimaryPercentUsesReadableRegularSystemFont() {
         let font = MenuBarUsageIconRenderer.primaryPercentFont(for: "91%")
 
-        XCTAssertEqual(font.pointSize, 8)
-        XCTAssertTrue(font.fontDescriptor.symbolicTraits.contains(.bold))
+        XCTAssertEqual(font.pointSize, 12)
+        XCTAssertFalse(font.fontDescriptor.symbolicTraits.contains(.bold))
+        XCTAssertFalse(font.fontDescriptor.symbolicTraits.contains(.condensed))
     }
 
-    func testHundredPercentUsesSmallerBoldFontToStayInsideSquareIcon() {
+    func testHundredPercentKeepsFullSizeFontWithoutClipping() {
         let font = MenuBarUsageIconRenderer.primaryPercentFont(for: "100%")
         let text = NSAttributedString(string: "100%", attributes: [.font: font])
         let availableWidth = CGFloat(MenuBarUsageIconRenderer.primaryPercentTextRect.width) /
@@ -49,8 +50,9 @@ final class MenuBarUsageIconRendererTests: XCTestCase {
         let availableHeight = CGFloat(MenuBarUsageIconRenderer.primaryPercentTextRect.height) /
             MenuBarUsageIconRenderer.backingScale
 
-        XCTAssertEqual(font.pointSize, 6)
-        XCTAssertTrue(font.fontDescriptor.symbolicTraits.contains(.bold))
+        XCTAssertEqual(font.pointSize, 12)
+        XCTAssertFalse(font.fontDescriptor.symbolicTraits.contains(.bold))
+        XCTAssertFalse(font.fontDescriptor.symbolicTraits.contains(.condensed))
         XCTAssertLessThanOrEqual(text.size().width, availableWidth)
         XCTAssertLessThanOrEqual(text.size().height, availableHeight)
     }
@@ -98,6 +100,11 @@ final class MenuBarUsageIconRendererTests: XCTestCase {
             image.representations.compactMap { $0 as? NSBitmapImageRep }.first
         )
 
+        XCTAssertEqual(image.size, NSSize(width: 36, height: 22))
+        XCTAssertEqual(representation.pixelsWide, 72)
+        XCTAssertEqual(representation.pixelsHigh, 44)
+        XCTAssertTrue(image.isTemplate)
+
         XCTAssertGreaterThan(
             self.nonTransparentPixelCount(
                 in: MenuBarUsageIconRenderer.primaryPercentTextRect,
@@ -111,7 +118,7 @@ final class MenuBarUsageIconRendererTests: XCTestCase {
         )
         XCTAssertEqual(
             self.nonTransparentPixelCount(
-                in: .init(x: 0, y: 15, width: 36, height: 3),
+                in: .init(x: 0, y: 11, width: 72, height: 1),
                 representation: representation
             ),
             0,

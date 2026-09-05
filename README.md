@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="./LICENSE"><img alt="license MIT" src="https://img.shields.io/badge/license-MIT-blue" /></a>
-  <a href="https://github.com/lizhelang/codexbar/releases"><img alt="release v1.2.7" src="https://img.shields.io/badge/release-v1.2.7-orange" /></a>
+  <a href="https://github.com/lizhelang/codexbar/releases"><img alt="release v1.2.11" src="https://img.shields.io/badge/release-v1.2.11-orange" /></a>
   <img alt="platform macOS" src="https://img.shields.io/badge/platform-macOS-black" />
   <img alt="language Swift" src="https://img.shields.io/badge/language-Swift-f05138" />
 </p>
@@ -76,6 +76,7 @@
 - OpenAI 账号 CSV 导入 / 导出
 - OpenAI 账号支持按用量排序 / 按手动顺序排序
 - 设置页里配置手动激活策略与 Codex.app 路径
+- 账号行右键「新开实例」：隔离 Chromium profile / TMPDIR，会话与写锁仍共享 `~/.codex`
 - 本地 usage / 成本统计
 - GitHub Releases 运行时版本检测与手动“检查更新”
 
@@ -85,6 +86,10 @@
 - `~/.codex/archived_sessions`
 
 因此你能直接在本地看到 token 用量和成本估算，而不需要手动翻 session 文件。
+
+成本历史会写入本机 `~/.codexbar/cost-usage.sqlite` 派生索引。应用只读取新增或变化的
+JSONL 字节，并以后台分片方式追赶大型历史；扫描期间继续显示上一次可用结果，同时在
+Cost 卡片里展示真实进度、陈旧状态或失败原因。这个索引可安全重建，不会修改原始 session。
 
 当前 token 统计只认本地 session，口径固定为：
 
@@ -168,6 +173,7 @@
 - 金额是基于模型价格表的估算
 - 设置页会自动列出本地 session 中出现过的历史模型，你可以直接为这些模型设置 input / cached input / output 单价
 - 未配置价格的模型默认按 `0` 成本处理，但 token 汇总仍会正常显示
+- 首次建立大型历史索引时会在后台逐步追赶；未知或扫描中状态不会被当作真实 `0` 展示
 - 对自定义 OpenAI 兼容 provider，显示的金额不一定等于真实供应商扣费
 
 如果某个第三方 provider 的价格策略和 OpenAI 官方定价不同，那 README 和界面里显示的美元金额都只能视为近似估算，不应直接当作实际账单。

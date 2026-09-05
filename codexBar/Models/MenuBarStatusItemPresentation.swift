@@ -25,9 +25,10 @@ struct MenuBarStatusItemPresentation: Equatable {
 
     enum Layout: Equatable {
         case compact
+        case usageWithPercent
 
         var statusItemLength: CGFloat {
-            NSStatusItem.squareLength
+            self == .usageWithPercent ? NSStatusItem.variableLength : NSStatusItem.squareLength
         }
 
         var imagePosition: NSControl.ImagePosition {
@@ -72,15 +73,9 @@ struct MenuBarStatusItemPresentation: Equatable {
 
     var font: NSFont { .systemFont(ofSize: 12, weight: self.emphasis.fontWeight) }
     var contentTintColor: NSColor? {
-        guard case .usageBars = self.icon else { return nil }
-        switch self.emphasis {
-        case .warning:
-            return .systemOrange
-        case .critical:
-            return .systemRed
-        case .primary, .secondary:
-            return nil
-        }
+        // 额度警告保留在菜单内容中；状态栏始终由系统提供与背景匹配的前景色。
+        // 自定义警告 tint 会让模板图标在部分 macOS 菜单栏外观下变黑。
+        nil
     }
 
     var attributedTitle: NSAttributedString {
@@ -96,9 +91,7 @@ struct MenuBarStatusItemPresentation: Equatable {
         )
     }
 
-    /// 常态输出模板图(系统按菜单栏明暗自适应);警告/严重状态把橙/红直接
-    /// 烘焙进非模板位图——按钮 tint + 模板图会被菜单栏 vibrancy 混成近黑色。
-    func makeStatusItemImage(accessibilityDescription: String) -> NSImage? {
+    func makeTemplateImage(accessibilityDescription: String) -> NSImage? {
         switch self.icon {
         case let .systemSymbol(iconName):
             let image = NSImage(
@@ -110,8 +103,7 @@ struct MenuBarStatusItemPresentation: Equatable {
         case let .usageBars(spec):
             return MenuBarUsageIconRenderer.makeImage(
                 spec: spec,
-                accessibilityDescription: accessibilityDescription,
-                tint: self.contentTintColor
+                accessibilityDescription: accessibilityDescription
             )
         }
     }
@@ -152,12 +144,19 @@ struct MenuBarStatusItemPresentation: Equatable {
             showsPrimaryPercent: showsUsageText
         )
 
+        let layout: Layout
+        if case let .usageBars(spec) = icon, spec.primaryPercentText != nil {
+            layout = .usageWithPercent
+        } else {
+            layout = .compact
+        }
+
         return MenuBarStatusItemPresentation(
             icon: icon,
             title: "",
             accessibilityValue: content.accessibilityValue,
             emphasis: content.emphasis,
-            layout: .compact
+            layout: layout
         )
     }
 

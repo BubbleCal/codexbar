@@ -48,12 +48,14 @@ enum CodexPaths {
     static var costCacheURL: URL { self.codexBarRoot.appendingPathComponent("cost-cache.json") }
     static var costSessionCacheURL: URL { self.codexBarRoot.appendingPathComponent("cost-session-cache.json") }
     static var costEventLedgerURL: URL { self.codexBarRoot.appendingPathComponent("cost-event-ledger.json") }
+    static var costUsageIndexURL: URL { self.codexBarRoot.appendingPathComponent("cost-usage.sqlite") }
     static var switchJournalURL: URL { self.codexBarRoot.appendingPathComponent("switch-journal.jsonl") }
     static var managedLaunchRootURL: URL { self.codexBarRoot.appendingPathComponent("managed-launch", isDirectory: true) }
     static var managedLaunchBinURL: URL { self.managedLaunchRootURL.appendingPathComponent("bin", isDirectory: true) }
     static var managedLaunchHitsURL: URL { self.managedLaunchRootURL.appendingPathComponent("hits", isDirectory: true) }
     static var managedLaunchStateURL: URL { self.managedLaunchRootURL.appendingPathComponent("last-launch.json") }
     static var managedCodexDesktopProfilesURL: URL { self.managedLaunchRootURL.appendingPathComponent("codex-desktop-profiles", isDirectory: true) }
+    static var managedInstancesRegistryURL: URL { self.managedLaunchRootURL.appendingPathComponent("instances.json") }
     static var openAIGatewayRootURL: URL { self.codexBarRoot.appendingPathComponent("openai-gateway", isDirectory: true) }
     static var openAIGatewayStateURL: URL { self.openAIGatewayRootURL.appendingPathComponent("state.json") }
     static var openAIGatewayRouteJournalURL: URL { self.openAIGatewayRootURL.appendingPathComponent("route-journal.json") }

@@ -2,6 +2,33 @@ import AppKit
 import XCTest
 
 final class MenuBarStatusItemPresentationTests: XCTestCase {
+    func testNineteenPercentRemainingKeepsSystemColoredTemplateAndWarning() throws {
+        let account = TokenAccount(
+            email: "low@example.com",
+            accountId: "acct_low",
+            primaryUsedPercent: 81,
+            isActive: true
+        )
+        let presentation = MenuBarStatusItemPresentation.make(
+            accounts: [account],
+            activeProvider: nil,
+            aggregateRoutedAccount: nil,
+            usageDisplayMode: .remaining,
+            accountUsageMode: .switchAccount,
+            updateAvailable: false,
+            showsUsageText: true
+        )
+
+        XCTAssertEqual(
+            presentation.icon,
+            .usageBars(MenuBarUsageIconSpec(displayPercents: [19], showsPrimaryPercent: true))
+        )
+        XCTAssertEqual(presentation.emphasis, .warning)
+        XCTAssertNil(presentation.contentTintColor)
+        let image = try XCTUnwrap(presentation.makeTemplateImage(accessibilityDescription: "Codexbar"))
+        XCTAssertTrue(image.isTemplate)
+    }
+
     func testActiveAccountUsesCompactUsageBarsByDefault() {
         let account = TokenAccount(
             email: "active@example.com",
@@ -35,7 +62,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
         XCTAssertEqual(presentation.layout, .compact)
     }
 
-    func testOptionalUsageTextMovesPrimaryPercentInsideSquareIcon() {
+    func testOptionalUsageTextUsesWiderImageForReadablePercent() {
         let account = TokenAccount(
             email: "active@example.com",
             accountId: "acct_active",
@@ -65,7 +92,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             )
         )
         XCTAssertEqual(presentation.title, "")
-        XCTAssertEqual(presentation.layout, .compact)
+        XCTAssertEqual(presentation.layout, .usageWithPercent)
     }
 
     func testWeeklyOnlyAccountUsesSingleCenteredUsageBar() {
@@ -122,7 +149,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             )
         )
         XCTAssertEqual(presentation.title, "")
-        XCTAssertEqual(presentation.layout, .compact)
+        XCTAssertEqual(presentation.layout, .usageWithPercent)
     }
 
     func testRestoredFiveHourWindowAutomaticallyUsesTwoBars() {
@@ -175,7 +202,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
         )
         XCTAssertEqual(presentation.accessibilityValue, L.weeklyLimit)
         XCTAssertEqual(presentation.emphasis, .critical)
-        XCTAssertTrue(presentation.contentTintColor?.isEqual(NSColor.systemRed) == true)
+        XCTAssertNil(presentation.contentTintColor)
     }
 
     func testRemainingModeDrivesBothBarsAndAccessibilitySummary() {
@@ -254,7 +281,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             )
         )
         XCTAssertEqual(withText.title, "")
-        XCTAssertEqual(withText.layout, .compact)
+        XCTAssertEqual(withText.layout, .usageWithPercent)
         XCTAssertEqual(withText.emphasis, .primary)
     }
 
@@ -289,7 +316,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             .usageBars(MenuBarUsageIconSpec(displayPercents: [100]))
         )
         XCTAssertEqual(presentation.emphasis, .critical)
-        XCTAssertTrue(presentation.contentTintColor?.isEqual(NSColor.systemRed) == true)
+        XCTAssertNil(presentation.contentTintColor)
     }
 
     func testAggregateHealthyRouteDoesNotInheritPreferredAccountWarning() {
@@ -324,7 +351,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
         )
     }
 
-    func testUpdateKeepsSystemSymbolWhileQuotaWarningUsesTintedUsageBars() {
+    func testUpdateKeepsSystemSymbolWhileQuotaWarningUsesSystemColoredUsageBars() {
         let healthy = TokenAccount(
             email: "healthy@example.com",
             accountId: "acct_healthy",
@@ -365,7 +392,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             .usageBars(MenuBarUsageIconSpec(displayPercents: [85, 30]))
         )
         XCTAssertEqual(warningPresentation.emphasis, .warning)
-        XCTAssertTrue(warningPresentation.contentTintColor?.isEqual(NSColor.systemOrange) == true)
+        XCTAssertNil(warningPresentation.contentTintColor)
         XCTAssertEqual(updatePresentation.layout, .compact)
         XCTAssertEqual(warningPresentation.layout, .compact)
     }
@@ -431,7 +458,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             emphasis: .primary
         )
 
-        let image = presentation.makeStatusItemImage(accessibilityDescription: "Codexbar")
+        let image = presentation.makeTemplateImage(accessibilityDescription: "Codexbar")
 
         XCTAssertNotNil(image)
         XCTAssertEqual(image?.isTemplate, true)
@@ -446,14 +473,13 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             layout: .compact
         )
 
-        let image = presentation.makeStatusItemImage(accessibilityDescription: "Codexbar")
+        let image = presentation.makeTemplateImage(accessibilityDescription: "Codexbar")
 
         XCTAssertNotNil(image)
         XCTAssertEqual(image?.isTemplate, true)
     }
 
-    func testCriticalUsageBarsImageBakesTintInsteadOfTemplateRendering() {
-        // tint + 模板图会被菜单栏 vibrancy 把饱和色混成近黑,严重状态必须烘焙颜色。
+    func testCriticalUsageBarsImageUsesSystemColoredTemplateRendering() {
         let presentation = MenuBarStatusItemPresentation(
             icon: .usageBars(MenuBarUsageIconSpec(displayPercents: [100, 80])),
             title: "",
@@ -462,10 +488,10 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             layout: .compact
         )
 
-        let image = presentation.makeStatusItemImage(accessibilityDescription: "Codexbar")
+        let image = presentation.makeTemplateImage(accessibilityDescription: "Codexbar")
 
         XCTAssertNotNil(image)
-        XCTAssertEqual(image?.isTemplate, false)
+        XCTAssertEqual(image?.isTemplate, true)
     }
 
     func testCompactLayoutUsesSquareImageOnlyStatusItem() {
@@ -474,6 +500,14 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             NSStatusItem.squareLength
         )
         XCTAssertEqual(MenuBarStatusItemPresentation.Layout.compact.imagePosition, .imageOnly)
+    }
+
+    func testPercentLayoutAllowsTheFullWidthImageWithoutScalingItDown() {
+        XCTAssertEqual(
+            MenuBarStatusItemPresentation.Layout.usageWithPercent.statusItemLength,
+            NSStatusItem.variableLength
+        )
+        XCTAssertEqual(MenuBarStatusItemPresentation.Layout.usageWithPercent.imagePosition, .imageOnly)
     }
 
     func testAttributedTitleDoesNotPinForegroundColor() {
