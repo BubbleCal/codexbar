@@ -2,7 +2,7 @@ import Foundation
 
 enum LocalCostPricing {
     private static let longContextInputThreshold = 272_000
-    private static let longContextPremiumBaseModels = ["gpt-5.4", "gpt-5.5", "gpt-5.6"]
+    private static let longContextPremiumBaseModels = ["gpt-5.4", "gpt-5.5", "gpt-5.6", "gpt-6-astra"]
 
     private static let defaultPricingByModel: [String: CodexBarModelPricing] = [
         "gpt-5": CodexBarModelPricing(inputUSDPerToken: 1.25e-6, cachedInputUSDPerToken: 1.25e-7, outputUSDPerToken: 1e-5),
@@ -29,6 +29,8 @@ enum LocalCostPricing {
         "gpt-5.6-sol": CodexBarModelPricing(inputUSDPerToken: 5e-6, cachedInputUSDPerToken: 5e-7, outputUSDPerToken: 3e-5),
         "gpt-5.6-terra": CodexBarModelPricing(inputUSDPerToken: 2.5e-6, cachedInputUSDPerToken: 2.5e-7, outputUSDPerToken: 1.5e-5),
         "gpt-5.6-luna": CodexBarModelPricing(inputUSDPerToken: 1e-6, cachedInputUSDPerToken: 1e-7, outputUSDPerToken: 6e-6),
+        // https://developers.openai.com/api/docs/models/gpt-6-astra
+        "gpt-6-astra": CodexBarModelPricing(inputUSDPerToken: 1e-5, cachedInputUSDPerToken: 1e-6, outputUSDPerToken: 5e-5),
         "qwen35_4b": .zero,
     ]
 
@@ -40,6 +42,8 @@ enum LocalCostPricing {
         "gpt-5.6-sol": CodexBarModelPricing(inputUSDPerToken: 1e-5, cachedInputUSDPerToken: 1e-6, outputUSDPerToken: 6e-5),
         "gpt-5.6-terra": CodexBarModelPricing(inputUSDPerToken: 5e-6, cachedInputUSDPerToken: 5e-7, outputUSDPerToken: 3e-5),
         "gpt-5.6-luna": CodexBarModelPricing(inputUSDPerToken: 2e-6, cachedInputUSDPerToken: 2e-7, outputUSDPerToken: 1.2e-5),
+        // Fast charges 2x the applicable GPT-6 Astra token rates.
+        "gpt-6-astra": CodexBarModelPricing(inputUSDPerToken: 2e-5, cachedInputUSDPerToken: 2e-6, outputUSDPerToken: 1e-4),
     ]
 
     static func defaultPricing(for model: String) -> CodexBarModelPricing? {
@@ -92,7 +96,11 @@ enum LocalCostPricing {
             model: normalizedModel,
             usage: usage
         )
-        let longContextRateMultiplier = usesLongContextPremium && customPricing == nil && priorityPricing == nil
+        // GPT-6 Astra's >272K premium applies before the Fast 2x multiplier.
+        let stacksLongContextAndPriority = normalizedModel == "gpt-6-astra"
+        let longContextRateMultiplier = usesLongContextPremium &&
+            customPricing == nil &&
+            (priorityPricing == nil || stacksLongContextAndPriority)
         ? 2.0
         : 1.0
         let outputRateMultiplier = longContextRateMultiplier > 1 ? 1.5 : 1.0
@@ -108,13 +116,13 @@ enum LocalCostPricing {
         inputTokens: Int
     ) -> CodexBarModelPricing? {
         guard serviceTier == .priority,
-              inputTokens <= self.longContextInputThreshold else {
+              inputTokens <= self.longContextInputThreshold || model == "gpt-6-astra" else {
             return nil
         }
         return self.priorityPricingByModel[model]
     }
 
-    private static func normalizedModelID(_ model: String) -> String {
+    static func normalizedModelID(_ model: String) -> String {
         var trimmed = model.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.hasPrefix("openai/") {
             trimmed = String(trimmed.dropFirst("openai/".count))

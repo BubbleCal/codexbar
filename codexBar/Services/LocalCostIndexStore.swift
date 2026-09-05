@@ -80,6 +80,8 @@ struct LocalCostIndexedSummary {
 }
 
 final class LocalCostIndexStore: @unchecked Sendable {
+    private static let gpt6AstraRateClassMigrationKey = "gpt6_astra_rate_class_v1"
+
     enum StoreError: Error {
         case openFailed(String)
         case executeFailed(String)
@@ -319,8 +321,8 @@ final class LocalCostIndexStore: @unchecked Sendable {
                     usage: usage,
                     serviceTier: tier,
                     customPricingByModel: modelPricingOverrides,
-                    forceLongContextPremium: rateClass == "long_context",
-                    forcePriorityPricing: rateClass == "priority"
+                    forceLongContextPremium: rateClass == "long_context" || rateClass == "priority_long_context",
+                    forcePriorityPricing: rateClass == "priority" || rateClass == "priority_long_context"
                 )
 
                 accumulator.lifetimeCost += cost
@@ -484,7 +486,69 @@ final class LocalCostIndexStore: @unchecked Sendable {
                 )
                 """
             )
+            try self.migrateGPT6AstraRateClassesIfNeeded()
             try self.execute("PRAGMA user_version = \(Self.currentSchemaVersion)")
+        }
+    }
+
+    private func migrateGPT6AstraRateClassesIfNeeded() throws {
+        let marker = try self.prepare("SELECT 1 FROM scan_metadata WHERE key = ?1")
+        try self.bind(Self.gpt6AstraRateClassMigrationKey, to: marker, at: 1)
+        let hasCompletedMigration = sqlite3_step(marker) == SQLITE_ROW
+        sqlite3_finalize(marker)
+        guard hasCompletedMigration == false else { return }
+
+        try self.execute("BEGIN IMMEDIATE TRANSACTION")
+        do {
+            let select = try self.prepare(
+                """
+                SELECT event_key, model, service_tier,
+                       input_tokens, cached_input_tokens, output_tokens
+                FROM events
+                WHERE model LIKE '%gpt-6-astra%'
+                """
+            )
+            defer { sqlite3_finalize(select) }
+            var updates: [(eventKey: String, rateClass: String)] = []
+            var selectResult = sqlite3_step(select)
+            while selectResult == SQLITE_ROW {
+                let eventKey = try self.requiredString(select, column: 0)
+                let model = try self.requiredString(select, column: 1)
+                if LocalCostPricing.normalizedModelID(model) == "gpt-6-astra" {
+                    let tier = SessionLogStore.ServiceTier.parse(try self.optionalString(select, column: 2))
+                    let usage = SessionLogStore.Usage(
+                        inputTokens: Int(sqlite3_column_int64(select, 3)),
+                        cachedInputTokens: Int(sqlite3_column_int64(select, 4)),
+                        outputTokens: Int(sqlite3_column_int64(select, 5))
+                    )
+                    updates.append((eventKey, self.rateClass(model: model, usage: usage, serviceTier: tier)))
+                }
+                selectResult = sqlite3_step(select)
+            }
+            guard selectResult == SQLITE_DONE else {
+                throw StoreError.stepFailed(self.lastErrorMessage())
+            }
+
+            let update = try self.prepare("UPDATE events SET rate_class = ?1 WHERE event_key = ?2")
+            defer { sqlite3_finalize(update) }
+            for item in updates {
+                try self.reset(update)
+                try self.bind(item.rateClass, to: update, at: 1)
+                try self.bind(item.eventKey, to: update, at: 2)
+                try self.stepDone(update)
+            }
+
+            if updates.isEmpty == false {
+                try self.rebuildAggregatesLocked()
+            }
+            let record = try self.prepare("INSERT INTO scan_metadata(key, value) VALUES (?1, 'complete')")
+            defer { sqlite3_finalize(record) }
+            try self.bind(Self.gpt6AstraRateClassMigrationKey, to: record, at: 1)
+            try self.stepDone(record)
+            try self.execute("COMMIT")
+        } catch {
+            try? self.execute("ROLLBACK")
+            throw error
         }
     }
 
@@ -555,16 +619,24 @@ final class LocalCostIndexStore: @unchecked Sendable {
         usage: SessionLogStore.Usage,
         serviceTier: SessionLogStore.ServiceTier
     ) -> String {
-        if LocalCostPricing.usesPriorityPricing(
+        let normalizedModel = LocalCostPricing.normalizedModelID(model)
+        let pricingModel = normalizedModel == "gpt-6-astra" ? normalizedModel : model
+        let usesPriorityPricing = LocalCostPricing.usesPriorityPricing(
             model: model,
             serviceTier: serviceTier,
             usage: usage
-        ) {
+        )
+        let usesLongContextPremium = LocalCostPricing.usesLongContextPremium(
+            model: pricingModel,
+            usage: usage
+        )
+        if usesPriorityPricing && usesLongContextPremium {
+            return "priority_long_context"
+        }
+        if usesPriorityPricing {
             return "priority"
         }
-        return LocalCostPricing.usesLongContextPremium(model: model, usage: usage)
-            ? "long_context"
-            : "standard"
+        return usesLongContextPremium ? "long_context" : "standard"
     }
 
     private func execute(_ sql: String) throws {

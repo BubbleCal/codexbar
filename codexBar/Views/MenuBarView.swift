@@ -560,11 +560,6 @@ struct MenuBarView: View {
     private let openAIAccountCSVPanelService = OpenAIAccountCSVPanelService()
     private let codexAppPathPanelService = CodexAppPathPanelService.shared
     private let codexDesktopLaunchProbeService = CodexDesktopLaunchProbeService()
-    private let codexModelOptions = [
-        "gpt-5.6-sol",
-        "gpt-5.6-terra",
-        "gpt-5.6-luna",
-    ]
     private let serviceTierOptions = ["flex", "fast"]
     private let contextWindowPresetOptions = CodexBarGlobalSettings.presetContextWindows
 
@@ -1090,12 +1085,17 @@ struct MenuBarView: View {
     }
 
     private func modelSelectionOptions(currentModel: String) -> [String] {
-        var candidates = [currentModel]
+        var candidates: [String] = []
         if let openRouterProvider = self.modelSelectionOpenRouterProvider {
+            candidates.append(currentModel)
             candidates.append(contentsOf: openRouterProvider.pinnedModelIDs)
             candidates.append(contentsOf: openRouterProvider.cachedModelCatalog.prefix(10).map(\.id))
         } else {
-            candidates.append(contentsOf: self.codexModelOptions)
+            candidates.append(
+                contentsOf: CodexBarGlobalSettings.codexModelSelectionOptions(
+                    including: currentModel
+                )
+            )
         }
 
         var seen: Set<String> = []

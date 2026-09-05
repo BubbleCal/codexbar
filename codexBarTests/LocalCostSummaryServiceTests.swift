@@ -955,6 +955,84 @@ final class LocalCostSummaryServiceTests: CodexBarTestCase {
         )
     }
 
+    func testGPT6AstraPricingCoversStandardCachedAndLongContextRates() {
+        let standardUsage = SessionLogStore.Usage(
+            inputTokens: 200_000,
+            cachedInputTokens: 50_000,
+            outputTokens: 10_000
+        )
+        XCTAssertEqual(
+            LocalCostPricing.costUSD(model: "gpt-6-astra", usage: standardUsage),
+            2.05,
+            accuracy: 1e-12
+        )
+
+        let longContextUsage = SessionLogStore.Usage(
+            inputTokens: 300_000,
+            cachedInputTokens: 100_000,
+            outputTokens: 10_000
+        )
+        XCTAssertEqual(
+            LocalCostPricing.costUSD(model: "gpt-6-astra", usage: longContextUsage),
+            4.95,
+            accuracy: 1e-12
+        )
+    }
+
+    func testGPT6AstraFastPricingStacksAtLongContextBoundaryAndHonorsOverride() {
+        let boundaryUsage = SessionLogStore.Usage(
+            inputTokens: 272_000,
+            cachedInputTokens: 72_000,
+            outputTokens: 10_000
+        )
+        XCTAssertEqual(
+            LocalCostPricing.costUSD(
+                model: "gpt-6-astra",
+                usage: boundaryUsage,
+                serviceTier: .priority
+            ),
+            5.144,
+            accuracy: 1e-12
+        )
+
+        let premiumUsage = SessionLogStore.Usage(
+            inputTokens: 272_001,
+            cachedInputTokens: 72_001,
+            outputTokens: 10_000
+        )
+        XCTAssertEqual(
+            LocalCostPricing.costUSD(
+                model: "gpt-6-astra",
+                usage: premiumUsage,
+                serviceTier: .priority
+            ),
+            9.788004,
+            accuracy: 1e-12
+        )
+
+        let overrideUsage = SessionLogStore.Usage(
+            inputTokens: 300_000,
+            cachedInputTokens: 100_000,
+            outputTokens: 10_000
+        )
+        XCTAssertEqual(
+            LocalCostPricing.costUSD(
+                model: "openai/gpt-6-astra-2026-09-05",
+                usage: overrideUsage,
+                serviceTier: .priority,
+                customPricingByModel: [
+                    "gpt-6-astra": CodexBarModelPricing(
+                        inputUSDPerToken: 1e-6,
+                        cachedInputUSDPerToken: 0.5e-6,
+                        outputUSDPerToken: 2e-6
+                    ),
+                ]
+            ),
+            0.27,
+            accuracy: 1e-12
+        )
+    }
+
     func testLoadPricesEveryTurnUsingItsOwnModelTierAndTurnID() throws {
         let home = try self.makeCodexHome()
         let sessionDirectory = home.appendingPathComponent(".codex/sessions", isDirectory: true)

@@ -70,7 +70,23 @@ final class TokenStoreSettingsTests: CodexBarTestCase {
         XCTAssertEqual(loaded.lastChecked, newerCheckedAt)
     }
 
-    func testReasoningEffortOptionsFollowGPT56ModelCapabilities() {
+    func testCodexModelOptionsAddGPT6AstraFirstWithoutChangingDefault() {
+        XCTAssertEqual(CodexBarGlobalSettings.defaultModelID, "gpt-5.6-sol")
+        XCTAssertEqual(
+            CodexBarGlobalSettings.codexModelOptions,
+            ["gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]
+        )
+        XCTAssertEqual(
+            CodexBarGlobalSettings.codexModelSelectionOptions(including: "gpt-5.5"),
+            ["gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"]
+        )
+    }
+
+    func testReasoningEffortOptionsFollowCodexModelCapabilities() {
+        XCTAssertEqual(
+            CodexBarGlobalSettings.reasoningEffortOptions(for: "gpt-6-astra"),
+            ["low", "medium", "high", "xhigh", "max", "ultra"]
+        )
         XCTAssertEqual(
             CodexBarGlobalSettings.reasoningEffortOptions(for: "gpt-5.6-sol"),
             ["low", "medium", "high", "xhigh", "max", "ultra"]
@@ -83,6 +99,19 @@ final class TokenStoreSettingsTests: CodexBarTestCase {
             CodexBarGlobalSettings.reasoningEffortOptions(for: "gpt-5.6-luna"),
             ["low", "medium", "high", "xhigh", "max"]
         )
+    }
+
+    func testGPT6AstraUsesFullContextWindowAndPreservesUserOverride() {
+        XCTAssertEqual(
+            CodexBarGlobalSettings.defaultContextWindow(for: "gpt-6-astra"),
+            1_050_000
+        )
+
+        let settings = CodexBarGlobalSettings(
+            modelContextWindows: ["gpt-6-astra": 512_000]
+        )
+        XCTAssertEqual(settings.displayContextWindow(for: "gpt-6-astra"), 512_000)
+        XCTAssertEqual(settings.syncContextWindow(for: "gpt-6-astra"), 512_000)
     }
 
     func testReasoningEffortOptionsPreserveUnknownCurrentValue() {
@@ -503,6 +532,75 @@ final class TokenStoreSettingsTests: CodexBarTestCase {
         let reloaded = try CodexBarConfigStore().loadOrMigrate()
         XCTAssertEqual(reloaded.global.defaultModel, "gpt-5.6-luna")
         XCTAssertEqual(reloaded.global.reasoningEffort, "max")
+    }
+
+    func testSelectingGPT6AstraPreservesAccountAndContextOverridesDuringSync() throws {
+        let accountID = "acct_gpt6_settings"
+        let account = TokenAccount(
+            email: "gpt6-settings@example.com",
+            accountId: accountID,
+            accessToken: "access-gpt6-settings",
+            refreshToken: "refresh-gpt6-settings",
+            idToken: "id-gpt6-settings"
+        )
+        let storedAccount = CodexBarProviderAccount.fromTokenAccount(
+            account,
+            existingID: accountID
+        )
+        let provider = CodexBarProvider(
+            id: "openai-oauth",
+            kind: .openAIOAuth,
+            label: "OpenAI",
+            activeAccountId: accountID,
+            accounts: [storedAccount]
+        )
+        try self.writeConfig(
+            CodexBarConfig(
+                global: CodexBarGlobalSettings(
+                    defaultModel: "gpt-5.6-terra",
+                    reviewModel: "gpt-5.6-terra",
+                    reasoningEffort: "ultra",
+                    modelContextWindows: ["gpt-5.6-terra": 512_000]
+                ),
+                active: CodexBarActiveSelection(
+                    providerId: provider.id,
+                    accountId: accountID
+                ),
+                providers: [provider]
+            )
+        )
+        let store = self.makeTokenStore(
+            syncService: CodexSyncService(),
+            openRouterCatalogService: OpenRouterModelCatalogServiceSpy(
+                result: .failure(URLError(.notConnectedToInternet))
+            )
+        )
+
+        try store.updateRouteModel("gpt-6-astra")
+
+        XCTAssertEqual(store.config.global.defaultModel, "gpt-6-astra")
+        XCTAssertEqual(store.config.global.reviewModel, "gpt-6-astra")
+        XCTAssertEqual(store.config.global.reasoningEffort, "ultra")
+        XCTAssertEqual(store.config.global.modelContextWindows["gpt-5.6-terra"], 512_000)
+        XCTAssertEqual(store.config.active.accountId, accountID)
+        XCTAssertEqual(store.config.activeProvider()?.activeAccountId, accountID)
+
+        var tomlText = try String(contentsOf: CodexPaths.configTomlURL, encoding: .utf8)
+        XCTAssertTrue(tomlText.contains(#"model = "gpt-6-astra""#))
+        XCTAssertTrue(tomlText.contains(#"model_reasoning_effort = "ultra""#))
+        XCTAssertTrue(tomlText.contains("model_context_window = 1050000"))
+
+        try store.updateModelContextWindow(512_000, for: "gpt-6-astra")
+
+        tomlText = try String(contentsOf: CodexPaths.configTomlURL, encoding: .utf8)
+        XCTAssertTrue(tomlText.contains("model_context_window = 512000"))
+        let reloaded = try CodexBarConfigStore().loadOrMigrate()
+        XCTAssertEqual(reloaded.global.defaultModel, "gpt-6-astra")
+        XCTAssertEqual(reloaded.global.reasoningEffort, "ultra")
+        XCTAssertEqual(reloaded.global.modelContextWindows["gpt-6-astra"], 512_000)
+        XCTAssertEqual(reloaded.global.modelContextWindows["gpt-5.6-terra"], 512_000)
+        XCTAssertEqual(reloaded.active.accountId, accountID)
+        XCTAssertEqual(reloaded.activeProvider()?.activeAccountId, accountID)
     }
 
     func testLunaRejectsUnsupportedUltraReasoningEffort() throws {
@@ -1201,12 +1299,13 @@ final class TokenStoreSettingsTests: CodexBarTestCase {
     }
 
     private func makeTokenStore(
+        syncService: any CodexSynchronizing = CodexSyncServiceNoOp(),
         costSummaryService: LocalCostSummaryService = LocalCostSummaryService(),
         localCostRefreshWorker: TokenStore.LocalCostRefreshWorker? = nil,
         openRouterCatalogService: any OpenRouterModelCatalogFetching
     ) -> TokenStore {
         TokenStore(
-            syncService: CodexSyncServiceNoOp(),
+            syncService: syncService,
             costSummaryService: costSummaryService,
             openAIAccountGatewayService: OpenAIAccountGatewayControllerStub(),
             openRouterGatewayService: OpenRouterGatewayControllerStub(),

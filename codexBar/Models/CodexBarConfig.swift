@@ -79,17 +79,26 @@ enum CodexBarAccountKind: String, Codable {
 
 struct CodexBarGlobalSettings: Codable {
     static let defaultModelID = "gpt-5.6-sol"
+    static let codexModelOptions = [
+        "gpt-6-astra",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+    ]
     static let baseReasoningEffortOptions = ["low", "medium", "high", "xhigh"]
     static let reasoningEffortOptionsByModel = [
+        "gpt-6-astra": baseReasoningEffortOptions + ["max", "ultra"],
         "gpt-5.6-sol": baseReasoningEffortOptions + ["max", "ultra"],
         "gpt-5.6-terra": baseReasoningEffortOptions + ["max", "ultra"],
         "gpt-5.6-luna": baseReasoningEffortOptions + ["max"],
     ]
     static let defaultContextWindow = 258_000
     static let largeContextWindowThreshold = 258_000
+    static let gpt6AstraContextWindow = 1_050_000
     static let gpt56ContextWindow = 1_050_000
     static let presetContextWindows = [258_000, 512_000, 1_000_000, gpt56ContextWindow]
     static let defaultContextWindowsByModel = [
+        "gpt-6-astra": gpt6AstraContextWindow,
         "gpt-5.6": gpt56ContextWindow,
         "gpt-5.6-sol": gpt56ContextWindow,
         "gpt-5.6-terra": gpt56ContextWindow,
@@ -151,6 +160,14 @@ struct CodexBarGlobalSettings: Codable {
     static func normalizedModelID(_ value: String) -> String? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    static func codexModelSelectionOptions(including currentModel: String) -> [String] {
+        guard let currentModel = self.normalizedModelID(currentModel),
+              self.codexModelOptions.contains(currentModel) == false else {
+            return self.codexModelOptions
+        }
+        return self.codexModelOptions + [currentModel]
     }
 
     static func reasoningEffortOptions(
