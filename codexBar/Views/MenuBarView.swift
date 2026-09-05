@@ -561,7 +561,6 @@ struct MenuBarView: View {
     private let codexAppPathPanelService = CodexAppPathPanelService.shared
     private let codexDesktopLaunchProbeService = CodexDesktopLaunchProbeService()
     private let serviceTierOptions = ["flex", "fast"]
-    private let contextWindowPresetOptions = CodexBarGlobalSettings.presetContextWindows
 
     @State private var isRefreshing = false
     @State private var errorBanner: MenuBarErrorBannerState?
@@ -978,7 +977,8 @@ struct MenuBarView: View {
                 title: self.store.config.global.reasoningEffort,
                 options: CodexBarGlobalSettings.reasoningEffortOptions(
                     for: currentModel,
-                    currentValue: self.store.config.global.reasoningEffort
+                    currentValue: self.store.config.global.reasoningEffort,
+                    catalog: self.store.modelCatalogForCurrentRoute
                 ),
                 currentValue: self.store.config.global.reasoningEffort
             ) { effort in
@@ -1001,10 +1001,19 @@ struct MenuBarView: View {
     }
 
     private func contextWindowMenu(currentModel: String) -> some View {
-        let currentWindow = self.store.config.global.displayContextWindow(for: currentModel)
+        let currentWindow = self.store.config.global.displayContextWindow(
+            for: currentModel,
+            catalog: self.store.modelCatalogForCurrentRoute
+        )
         let overrideWindow = self.store.config.global.contextWindowOverride(for: currentModel)
         return Menu {
-            ForEach(self.contextWindowPresetOptions, id: \.self) { window in
+            ForEach(
+                self.store.config.global.contextWindowSelectionOptions(
+                    for: currentModel,
+                    catalog: self.store.modelCatalogForCurrentRoute
+                ),
+                id: \.self
+            ) { window in
                 Button {
                     self.requestContextWindowUpdate(window, for: currentModel)
                 } label: {
@@ -1093,7 +1102,8 @@ struct MenuBarView: View {
         } else {
             candidates.append(
                 contentsOf: CodexBarGlobalSettings.codexModelSelectionOptions(
-                    including: currentModel
+                    including: currentModel,
+                    catalog: self.store.modelCatalogForCurrentRoute
                 )
             )
         }
@@ -1680,7 +1690,10 @@ struct MenuBarView: View {
         let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
         input.placeholderString = "258k"
         input.stringValue = self.formatContextWindow(
-            self.store.config.global.displayContextWindow(for: currentModel)
+            self.store.config.global.displayContextWindow(
+                for: currentModel,
+                catalog: self.store.modelCatalogForCurrentRoute
+            )
         )
         alert.accessoryView = input
 
@@ -2271,6 +2284,7 @@ struct MenuBarView: View {
     }
 
     private func handleMenuPresentationOpened() {
+        store.refreshCodexModelCatalog()
         countdownTimerConnection?.cancel()
         countdownTimerConnection = countdownTimer.connect()
         runningThreadTimerConnection?.cancel()
@@ -2309,6 +2323,9 @@ struct MenuBarView: View {
         force: Bool = true,
         announceResult: Bool = false
     ) async {
+        if origin == .manual {
+            store.refreshCodexModelCatalog()
+        }
         let shouldRefreshOAuth = force || store.hasStaleOAuthUsageSnapshot(maxAge: usageRefreshInterval)
         let shouldRefreshLocalCost = force || store.localCostSummary.updatedAt == nil
 

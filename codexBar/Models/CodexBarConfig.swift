@@ -79,31 +79,13 @@ enum CodexBarAccountKind: String, Codable {
 
 struct CodexBarGlobalSettings: Codable {
     static let defaultModelID = "gpt-5.6-sol"
-    static let codexModelOptions = [
-        "gpt-6-astra",
-        "gpt-5.6-sol",
-        "gpt-5.6-terra",
-        "gpt-5.6-luna",
-    ]
+    static var codexModelOptions: [String] { CodexModelCatalog.fallback.visibleModelIDs }
     static let baseReasoningEffortOptions = ["low", "medium", "high", "xhigh"]
-    static let reasoningEffortOptionsByModel = [
-        "gpt-6-astra": baseReasoningEffortOptions + ["max", "ultra"],
-        "gpt-5.6-sol": baseReasoningEffortOptions + ["max", "ultra"],
-        "gpt-5.6-terra": baseReasoningEffortOptions + ["max", "ultra"],
-        "gpt-5.6-luna": baseReasoningEffortOptions + ["max"],
-    ]
     static let defaultContextWindow = 258_000
     static let largeContextWindowThreshold = 258_000
     static let gpt6AstraContextWindow = 1_050_000
     static let gpt56ContextWindow = 1_050_000
     static let presetContextWindows = [258_000, 512_000, 1_000_000, gpt56ContextWindow]
-    static let defaultContextWindowsByModel = [
-        "gpt-6-astra": gpt6AstraContextWindow,
-        "gpt-5.6": gpt56ContextWindow,
-        "gpt-5.6-sol": gpt56ContextWindow,
-        "gpt-5.6-terra": gpt56ContextWindow,
-        "gpt-5.6-luna": gpt56ContextWindow,
-    ]
 
     var defaultModel: String
     var reviewModel: String
@@ -163,19 +145,27 @@ struct CodexBarGlobalSettings: Codable {
     }
 
     static func codexModelSelectionOptions(including currentModel: String) -> [String] {
-        guard let currentModel = self.normalizedModelID(currentModel),
-              self.codexModelOptions.contains(currentModel) == false else {
-            return self.codexModelOptions
+        self.codexModelSelectionOptions(including: currentModel, catalog: .fallback)
+    }
+
+    static func codexModelSelectionOptions(
+        including currentModel: String,
+        catalog: CodexModelCatalog
+    ) -> [String] {
+        var options = catalog.visibleModelIDs
+        if let currentModel = self.normalizedModelID(currentModel),
+           options.contains(currentModel) == false {
+            options.append(currentModel)
         }
-        return self.codexModelOptions + [currentModel]
+        return options
     }
 
     static func reasoningEffortOptions(
         for modelID: String,
-        currentValue: String? = nil
+        currentValue: String? = nil,
+        catalog: CodexModelCatalog = .fallback
     ) -> [String] {
-        let normalizedModelID = modelID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if let options = Self.reasoningEffortOptionsByModel[normalizedModelID] {
+        if let options = catalog.reasoningEfforts(for: modelID) {
             return options
         }
 
@@ -187,18 +177,24 @@ struct CodexBarGlobalSettings: Codable {
         return Self.baseReasoningEffortOptions + [trimmedCurrentValue]
     }
 
-    static func compatibleReasoningEffort(_ effort: String, for modelID: String) -> String {
-        let normalizedModelID = modelID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard let options = Self.reasoningEffortOptionsByModel[normalizedModelID],
+    static func compatibleReasoningEffort(
+        _ effort: String,
+        for modelID: String,
+        catalog: CodexModelCatalog = .fallback
+    ) -> String {
+        guard let options = catalog.reasoningEfforts(for: modelID),
               options.contains(effort) == false else {
             return effort
         }
         return options.last ?? effort
     }
 
-    static func supportsReasoningEffort(_ effort: String, for modelID: String) -> Bool {
-        let normalizedModelID = modelID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard let options = Self.reasoningEffortOptionsByModel[normalizedModelID] else {
+    static func supportsReasoningEffort(
+        _ effort: String,
+        for modelID: String,
+        catalog: CodexModelCatalog = .fallback
+    ) -> Bool {
+        guard let options = catalog.reasoningEfforts(for: modelID) else {
             return true
         }
         return options.contains(effort)
@@ -226,20 +222,41 @@ struct CodexBarGlobalSettings: Codable {
         return self.modelContextWindows[modelID]
     }
 
-    static func defaultContextWindow(for modelID: String) -> Int {
+    static func defaultContextWindow(
+        for modelID: String,
+        catalog: CodexModelCatalog = .fallback
+    ) -> Int {
         guard let modelID = Self.normalizedModelID(modelID) else {
             return Self.defaultContextWindow
         }
-        return Self.defaultContextWindowsByModel[modelID] ?? Self.defaultContextWindow
+        return catalog.maximumContextWindow(for: modelID) ?? Self.defaultContextWindow
     }
 
-    func displayContextWindow(for modelID: String) -> Int {
-        self.contextWindowOverride(for: modelID) ?? Self.defaultContextWindow(for: modelID)
+    func displayContextWindow(
+        for modelID: String,
+        catalog: CodexModelCatalog = .fallback
+    ) -> Int {
+        self.contextWindowOverride(for: modelID) ?? Self.defaultContextWindow(for: modelID, catalog: catalog)
     }
 
-    func syncContextWindow(for modelID: String) -> Int? {
+    func syncContextWindow(
+        for modelID: String,
+        catalog: CodexModelCatalog = .fallback
+    ) -> Int? {
         guard let modelID = Self.normalizedModelID(modelID) else { return nil }
-        return self.contextWindowOverride(for: modelID) ?? Self.defaultContextWindowsByModel[modelID]
+        return self.contextWindowOverride(for: modelID) ?? catalog.maximumContextWindow(for: modelID)
+    }
+
+    func contextWindowSelectionOptions(
+        for modelID: String,
+        catalog: CodexModelCatalog = .fallback
+    ) -> [Int] {
+        let maximumWindow = Self.defaultContextWindow(for: modelID, catalog: catalog)
+        let currentWindow = self.displayContextWindow(for: modelID, catalog: catalog)
+        var options = Self.presetContextWindows.filter { $0 <= maximumWindow }
+        options.append(maximumWindow)
+        options.append(currentWindow)
+        return Array(Set(options)).sorted()
     }
 }
 

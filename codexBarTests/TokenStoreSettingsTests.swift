@@ -603,6 +603,112 @@ final class TokenStoreSettingsTests: CodexBarTestCase {
         XCTAssertEqual(reloaded.activeProvider()?.activeAccountId, accountID)
     }
 
+    func testTokenStoreUsesDynamicCodexCatalogForEffortAndContextSync() throws {
+        try CodexPaths.writeSecureFile(
+            Data(
+                """
+                {"models":[{
+                  "slug":"future-codex",
+                  "display_name":"Future Codex",
+                  "visibility":"list",
+                  "supported_reasoning_levels":[
+                    {"effort":"low"},
+                    {"effort":"hyperspace"}
+                  ],
+                  "context_window":333000,
+                  "max_context_window":777000,
+                  "default_reasoning_level":"low"
+                }]}
+                """.utf8
+            ),
+            to: CodexPaths.modelsCacheURL
+        )
+        let accountID = "acct_dynamic_catalog"
+        let account = TokenAccount(
+            email: "dynamic-catalog@example.com",
+            accountId: accountID,
+            accessToken: "access-dynamic-catalog",
+            refreshToken: "refresh-dynamic-catalog",
+            idToken: "id-dynamic-catalog"
+        )
+        let storedAccount = CodexBarProviderAccount.fromTokenAccount(account, existingID: accountID)
+        let provider = CodexBarProvider(
+            id: "openai-oauth",
+            kind: .openAIOAuth,
+            label: "OpenAI",
+            activeAccountId: accountID,
+            accounts: [storedAccount]
+        )
+        try self.writeConfig(
+            CodexBarConfig(
+                global: CodexBarGlobalSettings(
+                    defaultModel: "future-codex",
+                    reviewModel: "future-codex",
+                    reasoningEffort: "low"
+                ),
+                active: CodexBarActiveSelection(providerId: provider.id, accountId: accountID),
+                providers: [provider]
+            )
+        )
+        let catalogService = CodexModelCatalogService(cacheURL: CodexPaths.modelsCacheURL)
+        let store = self.makeTokenStore(
+            syncService: CodexSyncService(),
+            codexModelCatalogService: catalogService,
+            openRouterCatalogService: OpenRouterModelCatalogServiceSpy(
+                result: .failure(URLError(.notConnectedToInternet))
+            )
+        )
+
+        XCTAssertEqual(store.codexModelCatalog.visibleModelIDs, ["future-codex"])
+        try store.updateReasoningEffort("hyperspace")
+
+        XCTAssertEqual(store.config.global.reasoningEffort, "hyperspace")
+        var tomlText = try String(contentsOf: CodexPaths.configTomlURL, encoding: .utf8)
+        XCTAssertTrue(tomlText.contains(#"model_reasoning_effort = "hyperspace""#))
+        XCTAssertTrue(tomlText.contains("model_context_window = 777000"))
+
+        try store.updateModelContextWindow(444_000, for: "future-codex")
+        tomlText = try String(contentsOf: CodexPaths.configTomlURL, encoding: .utf8)
+        XCTAssertTrue(tomlText.contains("model_context_window = 444000"))
+    }
+
+    func testCompatibleProviderDoesNotUseDynamicCodexCapabilities() throws {
+        try CodexPaths.writeSecureFile(
+            Data(
+                #"{"models":[{"slug":"gpt-5.6-sol","visibility":"list","supported_reasoning_levels":[{"effort":"low"}],"max_context_window":777000}]}"#.utf8
+            ),
+            to: CodexPaths.modelsCacheURL
+        )
+        var config = CodexBarConfig()
+        config.global = CodexBarGlobalSettings(reasoningEffort: "high")
+        try self.writeConfig(config)
+        let catalogService = CodexModelCatalogService(cacheURL: CodexPaths.modelsCacheURL)
+        let store = self.makeTokenStore(
+            syncService: CodexSyncService(),
+            codexModelCatalogService: catalogService,
+            openRouterCatalogService: OpenRouterModelCatalogServiceSpy(
+                result: .failure(URLError(.notConnectedToInternet))
+            )
+        )
+        try store.addCompatibleProvider(
+            label: "Compatible",
+            baseURL: "https://compatible.example.com/v1",
+            accountLabel: "Primary",
+            apiKey: "sk-compatible",
+            wireAPI: .responses,
+            presetID: nil,
+            model: "gpt-5.6-sol"
+        )
+
+        try store.updateReasoningEffort("ultra")
+
+        XCTAssertEqual(store.modelCatalogForCurrentRoute, .fallback)
+        XCTAssertEqual(store.config.global.reasoningEffort, "ultra")
+        let tomlText = try String(contentsOf: CodexPaths.configTomlURL, encoding: .utf8)
+        XCTAssertTrue(tomlText.contains("model_context_window = 1050000"))
+        XCTAssertFalse(tomlText.contains("model_context_window = 777000"))
+    }
+
     func testLunaRejectsUnsupportedUltraReasoningEffort() throws {
         var config = CodexBarConfig()
         config.global = CodexBarGlobalSettings(
@@ -1302,6 +1408,7 @@ final class TokenStoreSettingsTests: CodexBarTestCase {
         syncService: any CodexSynchronizing = CodexSyncServiceNoOp(),
         costSummaryService: LocalCostSummaryService = LocalCostSummaryService(),
         localCostRefreshWorker: TokenStore.LocalCostRefreshWorker? = nil,
+        codexModelCatalogService: any CodexModelCatalogLoading = CodexModelCatalogService(),
         openRouterCatalogService: any OpenRouterModelCatalogFetching
     ) -> TokenStore {
         TokenStore(
@@ -1310,6 +1417,7 @@ final class TokenStoreSettingsTests: CodexBarTestCase {
             openAIAccountGatewayService: OpenAIAccountGatewayControllerStub(),
             openRouterGatewayService: OpenRouterGatewayControllerStub(),
             openRouterModelCatalogService: openRouterCatalogService,
+            codexModelCatalogService: codexModelCatalogService,
             aggregateGatewayLeaseStore: AggregateGatewayLeaseStoreStub(),
             aggregateRouteJournalStore: AggregateRouteJournalStoreStub(),
             localCostRefreshWorker: localCostRefreshWorker,

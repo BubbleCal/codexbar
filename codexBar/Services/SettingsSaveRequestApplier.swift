@@ -3,27 +3,36 @@ import Foundation
 enum SettingsSaveRequestApplier {
     static func apply(
         _ requests: SettingsSaveRequests,
-        to config: inout CodexBarConfig
+        to config: inout CodexBarConfig,
+        modelCatalog: CodexModelCatalog = .fallback
     ) throws {
-        self.apply(requests.global, to: &config)
+        self.apply(requests.global, to: &config, modelCatalog: modelCatalog)
         try self.apply(requests.openAIAccount, to: &config)
         self.apply(requests.openAIUsage, to: &config)
         self.apply(requests.modelPricing, to: &config)
         try self.apply(requests.desktop, to: &config)
     }
 
-    static func apply(_ request: GlobalSettingsUpdate?, to config: inout CodexBarConfig) {
+    static func apply(
+        _ request: GlobalSettingsUpdate?,
+        to config: inout CodexBarConfig,
+        modelCatalog: CodexModelCatalog = .fallback
+    ) {
         guard let request else { return }
         let defaultModel = self.normalizedModel(request.defaultModel) ?? config.global.defaultModel
         let reviewModel = self.normalizedModel(request.reviewModel) ?? defaultModel
         let requestedReasoningEffort = self.normalizedReasoningEffort(request.reasoningEffort) ?? config.global.reasoningEffort
         let resolvedRoute = try? CodexRouteResolver.resolve(config: config)
+        let effectiveModelCatalog = resolvedRoute?.targetProvider.kind == .openAIOAuth
+            ? modelCatalog
+            : .fallback
         let reasoningModel = resolvedRoute?.targetProvider.kind == .openAIOAuth
             ? defaultModel
             : (resolvedRoute?.effectiveModel ?? defaultModel)
         let reasoningEffort = CodexBarGlobalSettings.compatibleReasoningEffort(
             requestedReasoningEffort,
-            for: reasoningModel
+            for: reasoningModel,
+            catalog: effectiveModelCatalog
         )
         let serviceTier = self.normalizedServiceTier(request.serviceTier) ?? config.global.serviceTier
         let modelContextWindows = request.modelContextWindows

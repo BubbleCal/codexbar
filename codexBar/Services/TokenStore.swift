@@ -146,6 +146,7 @@ final class TokenStore: ObservableObject {
     @Published private(set) var localCostRefreshState: LocalCostRefreshState = .idle
     @Published private(set) var historicalModels: [String]
     @Published private(set) var aggregateRoutedAccountID: String?
+    @Published private(set) var codexModelCatalog: CodexModelCatalog
 
     private let configStore: CodexBarConfigStore
     private let syncService: any CodexSynchronizing
@@ -156,6 +157,7 @@ final class TokenStore: ObservableObject {
     private let openRouterGatewayService: OpenRouterGatewayControlling
     private let chatCompletionsGatewayService: ChatCompletionsGatewayControlling
     private let openRouterModelCatalogService: any OpenRouterModelCatalogFetching
+    private let codexModelCatalogService: any CodexModelCatalogLoading
     private let openRouterGatewayLeaseStore: OpenRouterGatewayLeaseStoring
     private let aggregateGatewayLeaseStore: OpenAIAggregateGatewayLeaseStoring
     private let aggregateRouteJournalStore: OpenAIAggregateRouteJournalStoring
@@ -186,6 +188,7 @@ final class TokenStore: ObservableObject {
         openRouterGatewayService: OpenRouterGatewayControlling = OpenRouterGatewayService(),
         chatCompletionsGatewayService: ChatCompletionsGatewayControlling = ChatCompletionsGatewayService(),
         openRouterModelCatalogService: any OpenRouterModelCatalogFetching = OpenRouterModelCatalogService(),
+        codexModelCatalogService: any CodexModelCatalogLoading = CodexModelCatalogService(),
         openRouterGatewayLeaseStore: OpenRouterGatewayLeaseStoring = OpenRouterGatewayLeaseStore(),
         aggregateGatewayLeaseStore: OpenAIAggregateGatewayLeaseStoring = OpenAIAggregateGatewayLeaseStore(),
         aggregateRouteJournalStore: OpenAIAggregateRouteJournalStoring = OpenAIAggregateRouteJournalStore(),
@@ -210,6 +213,7 @@ final class TokenStore: ObservableObject {
         self.openRouterGatewayService = openRouterGatewayService
         self.chatCompletionsGatewayService = chatCompletionsGatewayService
         self.openRouterModelCatalogService = openRouterModelCatalogService
+        self.codexModelCatalogService = codexModelCatalogService
         self.openRouterGatewayLeaseStore = openRouterGatewayLeaseStore
         self.aggregateGatewayLeaseStore = aggregateGatewayLeaseStore
         self.aggregateRouteJournalStore = aggregateRouteJournalStore
@@ -218,6 +222,7 @@ final class TokenStore: ObservableObject {
         self.codexRunningProcessIDs = codexRunningProcessIDs
         self.openRouterGatewayLeaseSnapshot = openRouterGatewayLeaseStore.loadLease()
         self.aggregateGatewayLeaseProcessIDs = aggregateGatewayLeaseStore.loadProcessIDs()
+        self.codexModelCatalog = codexModelCatalogService.catalog()
 
         var initialConfig: CodexBarConfig
         if let loaded = try? self.configStore.loadOrMigrate() {
@@ -246,7 +251,10 @@ final class TokenStore: ObservableObject {
         self.localCostSummary = self.loadCachedLocalCostSummary()
         self.refreshLocalCostSummaryIfNeeded()
         self.seedSwitchJournalIfNeeded()
-        try? self.syncService.synchronize(config: self.config)
+        try? self.syncService.synchronize(
+            config: self.config,
+            modelCatalog: self.modelCatalogForCurrentRoute
+        )
     }
 
     var customProviders: [CodexBarProvider] {
@@ -285,12 +293,21 @@ final class TokenStore: ObservableObject {
         return self.config.global.defaultModel
     }
 
+    var modelCatalogForCurrentRoute: CodexModelCatalog {
+        guard let route = try? CodexRouteResolver.resolve(config: self.config),
+              route.targetProvider.kind == .openAIOAuth else {
+            return .fallback
+        }
+        return self.codexModelCatalog
+    }
+
     var aggregateRoutedAccount: TokenAccount? {
         guard let aggregateRoutedAccountID else { return nil }
         return self.accounts.first(where: { $0.accountId == aggregateRoutedAccountID })
     }
 
     func load() {
+        self.refreshCodexModelCatalog()
         if var loaded = try? self.configStore.loadOrMigrate() {
             let preservedNewerQuota = loaded.preserveNewerOAuthQuotaSnapshots(from: self.config)
             self.config = loaded
@@ -308,6 +325,10 @@ final class TokenStore: ObservableObject {
             )
             self.refreshLocalCostSummaryIfNeeded()
         }
+    }
+
+    func refreshCodexModelCatalog() {
+        self.codexModelCatalog = self.codexModelCatalogService.catalog()
     }
 
     func addOrUpdate(_ account: TokenAccount) {
@@ -783,7 +804,8 @@ final class TokenStore: ObservableObject {
         }
         let compatibleReasoningEffort = CodexBarGlobalSettings.compatibleReasoningEffort(
             self.config.global.reasoningEffort,
-            for: trimmedModelID
+            for: trimmedModelID,
+            catalog: self.modelCatalogForCurrentRoute
         )
 
         if let route = try? CodexRouteResolver.resolve(config: self.config) {
@@ -828,7 +850,8 @@ final class TokenStore: ObservableObject {
         }
         guard CodexBarGlobalSettings.supportsReasoningEffort(
             trimmedEffort,
-            for: self.activeModel
+            for: self.activeModel,
+            catalog: self.modelCatalogForCurrentRoute
         ) else {
             throw TokenStoreError.invalidInput
         }
@@ -889,7 +912,11 @@ final class TokenStore: ObservableObject {
         let previousRemoteConnectionAccountID = self.config.openAI.remoteConnectionAccountID
         let previousHybridTargetSelection = self.config.openAI.hybridTargetSelection
         var updatedConfig = self.config
-        try SettingsSaveRequestApplier.apply(requests, to: &updatedConfig)
+        try SettingsSaveRequestApplier.apply(
+            requests,
+            to: &updatedConfig,
+            modelCatalog: self.modelCatalogForCurrentRoute
+        )
 
         self.config = updatedConfig
         let shouldSyncCodex = self.shouldSyncCodexAfterSavingSettings(
@@ -1047,7 +1074,10 @@ final class TokenStore: ObservableObject {
         }
         try self.configStore.save(self.config)
         if syncCodex {
-            try self.syncService.synchronize(config: self.config)
+            try self.syncService.synchronize(
+                config: self.config,
+                modelCatalog: self.modelCatalogForCurrentRoute
+            )
         }
         self.publishState()
     }

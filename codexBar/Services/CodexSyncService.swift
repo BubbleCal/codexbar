@@ -2,6 +2,13 @@ import Foundation
 
 protocol CodexSynchronizing {
     func synchronize(config: CodexBarConfig) throws
+    func synchronize(config: CodexBarConfig, modelCatalog: CodexModelCatalog) throws
+}
+
+extension CodexSynchronizing {
+    func synchronize(config: CodexBarConfig, modelCatalog _: CodexModelCatalog) throws {
+        try self.synchronize(config: config)
+    }
 }
 
 enum CodexSyncError: LocalizedError {
@@ -34,6 +41,7 @@ struct CodexSyncService: CodexSynchronizing {
     private let readData: (URL) -> Data?
     private let fileExists: (URL) -> Bool
     private let removeFileIfPresent: (URL) throws -> Void
+    private let modelCatalogService: any CodexModelCatalogLoading
     private static let remoteConnectionProviderName = "CodexbarRemote"
 
     init(
@@ -56,7 +64,8 @@ struct CodexSyncService: CodexSynchronizing {
         removeFileIfPresent: @escaping (URL) throws -> Void = { url in
             guard FileManager.default.fileExists(atPath: url.path) else { return }
             try FileManager.default.removeItem(at: url)
-        }
+        },
+        modelCatalogService: any CodexModelCatalogLoading = CodexModelCatalogService()
     ) {
         self.ensureDirectories = ensureDirectories
         self.backupFileIfPresent = backupFileIfPresent
@@ -65,10 +74,18 @@ struct CodexSyncService: CodexSynchronizing {
         self.readData = readData
         self.fileExists = fileExists
         self.removeFileIfPresent = removeFileIfPresent
+        self.modelCatalogService = modelCatalogService
     }
 
     func synchronize(config: CodexBarConfig) throws {
+        try self.synchronize(config: config, modelCatalog: self.modelCatalogService.catalog())
+    }
+
+    func synchronize(config: CodexBarConfig, modelCatalog: CodexModelCatalog) throws {
         let route = try CodexRouteResolver.resolve(config: config)
+        let effectiveModelCatalog = route.targetProvider.kind == .openAIOAuth
+            ? modelCatalog
+            : .fallback
 
         let previousAuthData = self.readData(CodexPaths.authURL)
         let previousTomlData = self.readData(CodexPaths.configTomlURL)
@@ -83,7 +100,8 @@ struct CodexSyncService: CodexSynchronizing {
             config: config,
             existingText: existingTomlText,
             global: config.global,
-            route: route
+            route: route,
+            modelCatalog: effectiveModelCatalog
         )
         guard let tomlData = renderedToml.data(using: .utf8) else { return }
 
@@ -166,7 +184,8 @@ struct CodexSyncService: CodexSynchronizing {
         config: CodexBarConfig,
         existingText: String,
         global: CodexBarGlobalSettings,
-        route: ResolvedCodexRoute
+        route: ResolvedCodexRoute,
+        modelCatalog: CodexModelCatalog
     ) -> String {
         var text = existingText
         let provider = route.targetProvider
@@ -180,7 +199,7 @@ struct CodexSyncService: CodexSynchronizing {
         text = self.upsertSetting(text, key: "model", value: self.quote(route.effectiveModel))
         text = self.upsertSetting(text, key: "review_model", value: self.quote(provider.kind == .openRouter ? route.effectiveModel : global.reviewModel))
         text = self.upsertSetting(text, key: "model_reasoning_effort", value: self.quote(global.reasoningEffort))
-        if let contextWindow = global.syncContextWindow(for: route.effectiveModel) {
+        if let contextWindow = global.syncContextWindow(for: route.effectiveModel, catalog: modelCatalog) {
             text = self.upsertSetting(text, key: "model_context_window", value: "\(contextWindow)")
         } else {
             text = self.removeSetting(text, key: "model_context_window")
