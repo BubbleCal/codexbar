@@ -110,6 +110,7 @@ enum L {
     }
     static var exportOpenAICSVAction: String { zh ? "导出 OpenAI 账号" : "Export OpenAI Accounts" }
     static var importOpenAICSVAction: String { zh ? "导入 OpenAI 账号" : "Import OpenAI Accounts" }
+    static var importOpenAIAuthJSONAction: String { zh ? "导入 auth.json" : "Import auth.json" }
     static var contextWindowCustomAction: String { zh ? "自定义..." : "Custom..." }
     static var contextWindowUseModelDefaultAction: String { zh ? "模型默认" : "Use Model Default" }
     static func contextWindowMenuHelp(_ model: String) -> String {
@@ -551,6 +552,11 @@ enum L {
     }
     static var openAICSVExportPrompt: String { zh ? "导出" : "Export" }
     static var openAICSVImportPrompt: String { zh ? "导入" : "Import" }
+    static var importOpenAIAuthJSONPanelMessage: String {
+        zh
+            ? "选择一个 Codex auth.json 文件，把其中的 OpenAI 账号加入 codexbar。"
+            : "Choose a Codex auth.json file to add its OpenAI account to codexbar."
+    }
     static var noOpenAIAccountsToExport: String {
         zh ? "没有可导出的 OpenAI 账号" : "No OpenAI accounts available to export"
     }
@@ -583,6 +589,29 @@ enum L {
     static var openAIAccountDataInvalidFile: String { zh ? "账号文件格式无效。" : "The account file format is invalid." }
     static var openAIAccountDataUnsupportedType: String { zh ? "不支持的账号文件类型。" : "Unsupported account file type." }
     static var openAIAccountDataNoImportableAccounts: String { zh ? "文件里没有可导入的 OpenAI OAuth 账号。" : "The file does not contain any importable OpenAI OAuth accounts." }
+    static var openAIAuthJSONEmptyFile: String { zh ? "auth.json 是空文件。" : "The auth.json file is empty." }
+    static var openAIAuthJSONInvalidFile: String { zh ? "auth.json 不是有效的 JSON。" : "The auth.json file is not valid JSON." }
+    static var openAIAuthJSONNotOAuthFile: String {
+        zh
+            ? "这个 auth.json 里没有 OAuth 账号，可能是仅使用 API key 的配置。"
+            : "This auth.json has no OAuth account; it may be an API-key-only configuration."
+    }
+    static var openAIAuthJSONMissingTokens: String {
+        zh
+            ? "auth.json 缺少 access_token、refresh_token 或 id_token。"
+            : "The auth.json file is missing access_token, refresh_token, or id_token."
+    }
+    static var openAIAuthJSONUnresolvableAccount: String {
+        zh
+            ? "无法从 auth.json 的 token 中解析出账号身份。"
+            : "Could not resolve an account identity from the tokens in auth.json."
+    }
+    static func openAIAuthJSONImportSucceeded(_ label: String, isNew: Bool) -> String {
+        if isNew {
+            return zh ? "已添加账号 \(label)。" : "Added account \(label)."
+        }
+        return zh ? "已更新账号 \(label)。" : "Updated account \(label)."
+    }
     static func openAIAccountDataMissingRequiredValue(_ index: Int) -> String {
         zh ? "第 \(index) 个 OpenAI 账号缺少必填字段。" : "OpenAI account \(index) is missing required fields."
     }

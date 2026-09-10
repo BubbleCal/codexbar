@@ -558,6 +558,8 @@ struct MenuBarView: View {
     private let oauthAccountService = CodexBarOAuthAccountService()
     private let openAIAccountCSVService = OpenAIAccountCSVService()
     private let openAIAccountCSVPanelService = OpenAIAccountCSVPanelService()
+    private let openAIAuthJSONPanelService = OpenAIAuthJSONPanelService()
+    private let openAIAuthJSONImportService = OpenAIAuthJSONImportService()
     private let codexAppPathPanelService = CodexAppPathPanelService.shared
     private let codexDesktopLaunchProbeService = CodexDesktopLaunchProbeService()
     private let serviceTierOptions = ["flex", "fast"]
@@ -579,6 +581,7 @@ struct MenuBarView: View {
     @State private var isProvidersExpanded = false
     @State private var lastOpenAIManualSwitchResult: OpenAIManualSwitchResult?
     @State private var desktopInstanceBanner: OpenAIStatusBannerPresentation?
+    @State private var authJSONImportBanner: OpenAIStatusBannerPresentation?
     @State private var launchingInstanceAccountIDs: Set<String> = []
     @State private var measuredMenuHeight: CGFloat = 0
     @State private var openAIAccountsMeasuredHeight: CGFloat = 0
@@ -1152,6 +1155,10 @@ struct MenuBarView: View {
                 Button(L.importOpenAICSVAction) {
                     importOpenAIAccountsCSV()
                 }
+                Divider()
+                Button(L.importOpenAIAuthJSONAction) {
+                    importOpenAIAuthJSON()
+                }
             } label: {
                 Image(systemName: OpenAIAccountCSVToolbarUI.symbolName)
                     .font(.system(size: 12))
@@ -1319,6 +1326,15 @@ struct MenuBarView: View {
                     desktopInstanceBanner,
                     onDismiss: {
                         self.desktopInstanceBanner = nil
+                    }
+                )
+            }
+
+            if let authJSONImportBanner {
+                self.openAIStatusBanner(
+                    authJSONImportBanner,
+                    onDismiss: {
+                        self.authJSONImportBanner = nil
                     }
                 )
             }
@@ -2167,6 +2183,43 @@ struct MenuBarView: View {
         } catch {
             self.setGenericError(error.localizedDescription)
         }
+    }
+
+    private func importOpenAIAuthJSON() {
+        do {
+            guard let importURL = self.openAIAuthJSONPanelService.requestImportURL() else {
+                return
+            }
+
+            let account = try self.openAIAuthJSONImportService.parse(try Data(contentsOf: importURL))
+            // 不自动激活:导入只是把账号加入池子,切换仍由用户显式发起,
+            // 以免反写 ~/.codex/auth.json 覆盖掉用户正在使用的凭据。
+            let result = try self.oauthAccountService.importAccounts(
+                [account],
+                activeAccountID: nil
+            )
+
+            self.store.load()
+            self.refreshRunningThreadAttribution()
+            self.clearError()
+            self.authJSONImportBanner = OpenAIStatusBannerPresentation(
+                title: L.importOpenAIAuthJSONAction,
+                message: L.openAIAuthJSONImportSucceeded(
+                    self.importedAccountLabel(for: account),
+                    isNew: result.addedCount > 0
+                ),
+                actionTitle: nil,
+                tone: .info
+            )
+            self.refreshImportedAccounts(accountIDs: result.importedAccountIDs)
+        } catch {
+            self.authJSONImportBanner = nil
+            self.setGenericError(error.localizedDescription)
+        }
+    }
+
+    private func importedAccountLabel(for account: TokenAccount) -> String {
+        account.email.isEmpty ? String(account.accountId.prefix(8)) : account.email
     }
 
     private func openSettingsWindow() {
