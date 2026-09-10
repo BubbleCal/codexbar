@@ -548,7 +548,6 @@ private final class AdaptiveMenuScrollHost: NSView {
 struct MenuBarView: View {
     @EnvironmentObject var store: TokenStore
     @EnvironmentObject var oauth: OAuthManager
-    @EnvironmentObject var updateCoordinator: UpdateCoordinator
 
     private let costPanelID = "cost-details-hover-panel"
     private let usageRefreshInterval = OpenAIUsagePollingService.defaultRefreshInterval
@@ -881,11 +880,6 @@ struct MenuBarView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 9)
-            }
-
-            if let pendingAvailability = self.updateCoordinator.pendingAvailability {
-                Divider()
-                self.updateAvailableBanner(availability: pendingAvailability)
             }
 
             Divider()
@@ -1226,35 +1220,6 @@ struct MenuBarView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-    }
-
-    private func updateAvailableBanner(availability: AppUpdateAvailability) -> some View {
-        HStack(alignment: .center, spacing: 10) {
-            Image(systemName: "arrow.down.circle.fill")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.accentColor)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L.menuUpdateAvailableTitle(availability.release.version))
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(MenuDesign.textPrimary)
-                Text(L.menuUpdateAvailableSubtitle(availability.currentVersion, availability.release.version))
-                    .font(MenuDesign.captionFont)
-                    .foregroundColor(MenuDesign.textSecondary)
-                    .lineLimit(2)
-            }
-
-            Spacer(minLength: 8)
-
-            Button(L.menuUpdateAction) {
-                Task { await self.updateCoordinator.handleToolbarAction() }
-            }
-            .controlSize(.small)
-            .disabled(self.updateCoordinator.isChecking)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color.accentColor.opacity(0.07))
     }
 
     private func openAIAvailabilityBadge(title: String) -> some View {

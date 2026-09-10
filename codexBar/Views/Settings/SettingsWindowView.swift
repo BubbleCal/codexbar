@@ -3,7 +3,6 @@ import SwiftUI
 
 struct SettingsWindowView: View {
     @ObservedObject private var store: TokenStore
-    @ObservedObject private var updateCoordinator: UpdateCoordinator
     private let codexAppPathPanelService: CodexAppPathPanelService
     private let onClose: () -> Void
 
@@ -13,12 +12,10 @@ struct SettingsWindowView: View {
     @MainActor
     init(
         store: TokenStore,
-        updateCoordinator: UpdateCoordinator? = nil,
         codexAppPathPanelService: CodexAppPathPanelService,
         onClose: @escaping () -> Void
     ) {
         self._store = ObservedObject(wrappedValue: store)
-        self._updateCoordinator = ObservedObject(wrappedValue: updateCoordinator ?? .shared)
         self.codexAppPathPanelService = codexAppPathPanelService
         self.onClose = onClose
         self._coordinator = StateObject(
@@ -137,8 +134,6 @@ struct SettingsWindowView: View {
                     }
                 case .usage:
                     SettingsUsagePage(coordinator: self.coordinator)
-                case .updates:
-                    SettingsUpdatesPage(updateCoordinator: self.updateCoordinator)
                 }
             }
             .padding(20)
@@ -311,126 +306,6 @@ private struct SettingsUsagePage: View {
     }
 }
 
-private struct SettingsUpdatesPage: View {
-    @ObservedObject var updateCoordinator: UpdateCoordinator
-
-    private var currentVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
-    }
-
-    private var latestVersion: String {
-        if let availability = self.updateCoordinator.pendingAvailability {
-            return availability.release.version
-        }
-        switch self.updateCoordinator.state {
-        case let .upToDate(_, checkedVersion):
-            return checkedVersion
-        case let .executing(availability):
-            return availability.release.version
-        case let .updateAvailable(availability):
-            return availability.release.version
-        case .idle, .checking, .failed:
-            return L.settingsUpdatesUnknownVersion
-        }
-    }
-
-    private var statusText: String {
-        switch self.updateCoordinator.state {
-        case .idle:
-            return L.settingsUpdatesIdle
-        case .checking:
-            return L.settingsUpdatesChecking
-        case let .upToDate(currentVersion, _):
-            return L.settingsUpdatesUpToDate(currentVersion)
-        case let .updateAvailable(availability):
-            return L.settingsUpdatesAvailable(
-                availability.currentVersion,
-                availability.release.version
-            )
-        case let .executing(availability):
-            return L.settingsUpdatesExecuting(availability.release.version)
-        case let .failed(message):
-            return L.settingsUpdatesFailed(message)
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text(SettingsPage.updates.title)
-                .font(.system(size: 16, weight: .semibold))
-
-            Text(L.settingsUpdatesPageHint)
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            VStack(alignment: .leading, spacing: 10) {
-                SettingsUpdatesInfoRow(
-                    title: L.settingsUpdatesCurrentVersionTitle,
-                    value: self.currentVersion
-                )
-                SettingsUpdatesInfoRow(
-                    title: L.settingsUpdatesLatestVersionTitle,
-                    value: self.latestVersion
-                )
-                SettingsUpdatesInfoRow(
-                    title: L.settingsUpdatesStatusTitle,
-                    value: self.statusText
-                )
-            }
-
-            HStack(spacing: 10) {
-                Button(L.settingsUpdatesCheckAction) {
-                    Task { await self.updateCoordinator.checkForUpdates(trigger: .manual) }
-                }
-                .disabled(self.updateCoordinator.isChecking)
-
-                if self.updateCoordinator.pendingAvailability != nil {
-                    Button(L.settingsUpdatesInstallAction) {
-                        Task { await self.updateCoordinator.handleToolbarAction() }
-                    }
-                    .disabled(self.updateCoordinator.isChecking)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text(L.settingsUpdatesSourceNote)
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Text(L.settingsUpdatesReissueLimitNote)
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-}
-
-private struct SettingsUpdatesInfoRow: View {
-    let title: String
-    let value: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text(self.title)
-                .font(.system(size: 11, weight: .medium))
-                .frame(width: 160, alignment: .leading)
-            Text(self.value)
-                .font(.system(size: 11))
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.secondary.opacity(0.06))
-        )
-    }
-}
 
 private struct SettingsAccountUsageModeSection: View {
     @Binding var mode: CodexBarOpenAIAccountUsageMode
@@ -1133,8 +1008,6 @@ private extension SettingsPage {
             return L.settingsRecordsPageTitle
         case .usage:
             return L.settingsUsagePageTitle
-        case .updates:
-            return L.settingsUpdatesPageTitle
         }
     }
 
@@ -1146,8 +1019,6 @@ private extension SettingsPage {
             return "clock.arrow.circlepath"
         case .usage:
             return "chart.bar"
-        case .updates:
-            return "arrow.trianglehead.2.clockwise"
         }
     }
 }

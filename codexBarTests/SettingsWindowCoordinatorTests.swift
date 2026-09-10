@@ -32,7 +32,7 @@ final class SettingsWindowCoordinatorTests: XCTestCase {
         )
         coordinator.selectedPage = .accounts
         coordinator.update(\.preferredCodexAppPath, to: "/Applications/Codex.app", field: .preferredCodexAppPath)
-        coordinator.selectedPage = .updates
+        coordinator.selectedPage = .records
 
         XCTAssertEqual(coordinator.draft.accountOrderingMode, .manual)
         XCTAssertEqual(coordinator.draft.manualActivationBehavior, .launchNewInstance)

@@ -69,23 +69,4 @@ final class MenuBarIconResolverTests: XCTestCase {
         XCTAssertEqual(healthy, "terminal.fill")
     }
 
-    func testUpdateAvailableOverridesNormalIcon() {
-        let accounts = [
-            TokenAccount(
-                email: "alice@example.com",
-                accountId: "acct_alice",
-                primaryUsedPercent: 100,
-                secondaryUsedPercent: 100,
-                isActive: true
-            )
-        ]
-
-        let icon = MenuBarIconResolver.iconName(
-            accounts: accounts,
-            activeProviderKind: .openAIOAuth,
-            updateAvailable: true
-        )
-
-        XCTAssertEqual(icon, "arrow.down.circle.fill")
-    }
 }

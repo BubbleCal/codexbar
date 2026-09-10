@@ -55,7 +55,6 @@ final class AppLifecycleDiagnosticsTests: XCTestCase {
         let host = LifecycleSpy()
         let usage = LifecycleSpy()
         let oauth = OAuthRefreshSpy()
-        let updater = LifecycleSpy()
         let store = TokenStoreSpy()
         let cleaner = MenuHostCleanerSpy()
         cleaner.result = MenuHostLegacyCleanupResult(removedLease: true)
@@ -65,7 +64,6 @@ final class AppLifecycleDiagnosticsTests: XCTestCase {
             statusItemHost: host,
             usagePolling: usage,
             oauthRefresh: oauth,
-            updateCoordinator: updater,
             tokenStore: store,
             legacyMenuHostCleaner: cleaner
         ) { type, _ in
@@ -79,7 +77,6 @@ final class AppLifecycleDiagnosticsTests: XCTestCase {
         XCTAssertEqual(host.startCount, 1)
         XCTAssertEqual(usage.startCount, 1)
         XCTAssertEqual(oauth.startCount, 1)
-        XCTAssertEqual(updater.startCount, 1)
         XCTAssertEqual(events, ["legacy_menu_host_cleaned", "single_process_runtime_services_started"])
     }
 
@@ -89,7 +86,6 @@ final class AppLifecycleDiagnosticsTests: XCTestCase {
             statusItemHost: LifecycleSpy(),
             usagePolling: LifecycleSpy(),
             oauthRefresh: OAuthRefreshSpy(),
-            updateCoordinator: LifecycleSpy(),
             tokenStore: TokenStoreSpy(),
             legacyMenuHostCleaner: MenuHostCleanerSpy()
         ) { type, _ in
@@ -108,7 +104,6 @@ final class AppLifecycleDiagnosticsTests: XCTestCase {
             statusItemHost: LifecycleSpy(),
             usagePolling: LifecycleSpy(),
             oauthRefresh: oauth,
-            updateCoordinator: LifecycleSpy(),
             tokenStore: store,
             legacyMenuHostCleaner: MenuHostCleanerSpy()
         ) { _, _ in }
@@ -123,14 +118,12 @@ final class AppLifecycleDiagnosticsTests: XCTestCase {
         let host = LifecycleSpy()
         let usage = LifecycleSpy()
         let oauth = OAuthRefreshSpy()
-        let updater = LifecycleSpy()
         var events: [String] = []
 
         let controller = SingleProcessAppRuntimeController(
             statusItemHost: host,
             usagePolling: usage,
             oauthRefresh: oauth,
-            updateCoordinator: updater,
             tokenStore: TokenStoreSpy(),
             legacyMenuHostCleaner: MenuHostCleanerSpy()
         ) { type, _ in
@@ -139,7 +132,6 @@ final class AppLifecycleDiagnosticsTests: XCTestCase {
 
         controller.stop()
 
-        XCTAssertEqual(updater.stopCount, 1)
         XCTAssertEqual(oauth.stopCount, 1)
         XCTAssertEqual(usage.stopCount, 1)
         XCTAssertEqual(host.stopCount, 1)

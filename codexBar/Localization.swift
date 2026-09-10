@@ -35,14 +35,6 @@ enum L {
     static var noAccounts: String      { zh ? "还没有账号"          : "No Accounts" }
     static var addAccountHint: String  { zh ? "点击下方 + 添加账号"   : "Tap + below to add an account" }
     static var refreshUsage: String    { zh ? "刷新用量"            : "Refresh Usage" }
-    static var checkForUpdates: String { zh ? "检查更新"            : "Check for Updates" }
-    static func menuUpdateAvailableTitle(_ version: String) -> String {
-        zh ? "发现新版本 v\(version)" : "Version \(version) Is Available"
-    }
-    static func menuUpdateAvailableSubtitle(_ currentVersion: String, _ latestVersion: String) -> String {
-        zh ? "当前为 \(currentVersion)，现在可以继续下载或安装 \(latestVersion)。" : "You're on \(currentVersion). Download or install \(latestVersion) now."
-    }
-    static var menuUpdateAction: String { zh ? "更新" : "Update" }
     static var addAccount: String      { zh ? "添加账号"            : "Add Account" }
     static var openAICSVToolbar: String { zh ? "导入或导出 OpenAI 账号" : "Import or Export OpenAI Accounts" }
     static func codexLaunchSwitchedInstanceStarted(_ account: String) -> String {
@@ -136,117 +128,16 @@ enum L {
         zh ? "请输入正整数，或使用 258k、512k、1m 这类简写。" : "Enter a positive integer, or shorthand like 258k, 512k, or 1m."
     }
     static var settings: String { zh ? "设置" : "Settings" }
-    static func updateInstallActionHelp(_ version: String) -> String {
-        zh ? "下载或安装 \(version)" : "Download or Install \(version)"
-    }
-    static var updateInstallLocationOther: String {
-        zh ? "非标准路径" : "Non-standard Location"
-    }
-    static var updateArchitectureUniversal: String {
-        zh ? "通用构建" : "Universal Build"
-    }
-    static var updateSignatureUnknown: String {
-        zh ? "未能读取应用签名信息" : "Unable to read the app signature"
-    }
-    static var updateBlockerGuidedDownloadOnlyRelease: String {
-        zh ? "当前可用版本仍要求走引导下载/安装，不宣称自动替换闭环。" : "The current release still requires guided download/install instead of automatic replacement."
-    }
-    static func updateBlockerBootstrapRequired(_ currentVersion: String, _ minimumAutomaticVersion: String) -> String {
-        zh
-            ? "Bootstrap / Rollout Gate 未满足：\(currentVersion) 仍需先人工安装到 \(minimumAutomaticVersion) 或更高版本，自动更新闭环才从后续版本开始。"
-            : "Bootstrap / rollout gate not satisfied: \(currentVersion) must first be manually upgraded to \(minimumAutomaticVersion) or later before automatic updates can be closed-loop."
-    }
-    static var updateBlockerAutomaticUpdaterUnavailable: String {
-        zh ? "当前仓库尚未接入可用的成熟自动更新引擎。" : "A mature automatic update engine is not wired into this repository yet."
-    }
-    static func updateBlockerMissingTrustedSignature(_ summary: String) -> String {
-        zh
-            ? "当前安装缺少可用于成熟 updater 的可信签名：\(summary)"
-            : "This installation lacks a trusted signature suitable for a mature updater: \(summary)"
-    }
-    static func updateBlockerGatekeeperAssessment(_ summary: String) -> String {
-        zh
-            ? "当前安装未通过 Gatekeeper / 分发前置条件：\(summary)"
-            : "This installation does not satisfy the Gatekeeper / distribution prerequisites: \(summary)"
-    }
-    static func updateBlockerUnsupportedInstallLocation(_ pathDescription: String) -> String {
-        zh
-            ? "当前安装路径为 \(pathDescription)，尚未纳入可自动替换的受支持范围。"
-            : "The current install location is \(pathDescription), which is not yet in the supported auto-replace matrix."
-    }
-    static var updateErrorMissingReleasesURL: String {
-        zh ? "未配置 GitHub Releases API 地址。" : "The GitHub Releases API URL is not configured."
-    }
-    static func updateErrorInvalidCurrentVersion(_ version: String) -> String {
-        zh ? "当前版本号无效：\(version)" : "Invalid current version: \(version)"
-    }
-    static func updateErrorInvalidReleaseVersion(_ version: String) -> String {
-        zh ? "最新稳定版本号无效：\(version)" : "Invalid latest stable version: \(version)"
-    }
-    static var updateErrorInvalidResponse: String {
-        zh ? "GitHub Releases 响应无效。" : "The GitHub Releases response is invalid."
-    }
-    static func updateErrorUnexpectedStatusCode(_ statusCode: Int) -> String {
-        zh ? "GitHub Releases API 返回异常状态码：\(statusCode)" : "The GitHub Releases API returned status code \(statusCode)."
-    }
-    static var updateErrorNoInstallableStableRelease: String {
-        zh ? "GitHub Releases 中未找到可安装的正式稳定版本。" : "No installable stable release was found on GitHub Releases."
-    }
-    static func updateErrorNoCompatibleArtifact(_ architecture: String) -> String {
-        zh ? "最新稳定版本中缺少适用于 \(architecture) 的安装包。" : "The latest stable release does not contain a compatible installer for \(architecture)."
-    }
-    static func updateErrorFailedToOpenDownloadURL(_ url: String) -> String {
-        zh ? "无法打开下载链接：\(url)" : "Failed to open the download URL: \(url)"
-    }
-    static var updateErrorAutomaticUpdateUnavailable: String {
-        zh ? "当前构建尚未接入可执行的自动更新引擎。" : "An executable automatic update engine is not available in this build."
-    }
     static var settingsWindowTitle: String { self.settings }
     static var settingsWindowHint: String {
         zh
-            ? "左侧切换账户、记录、用量和更新设置。账户/用量修改会先保存在草稿里；记录页只负责浏览与刷新，不进入 Save / Cancel 草稿流。"
-            : "Use the sidebar to switch between account, records, usage, and update settings. Account and usage changes stay in a draft; the records page is browse/refresh only and does not participate in Save or Cancel."
+            ? "左侧切换账户、记录和用量设置。账户/用量修改会先保存在草稿里；记录页只负责浏览与刷新，不进入 Save / Cancel 草稿流。"
+            : "Use the sidebar to switch between account, records, and usage settings. Account and usage changes stay in a draft; the records page is browse/refresh only and does not participate in Save or Cancel."
     }
     static var settingsAccountsPageTitle: String { zh ? "账户设置" : "Account Settings" }
     static var settingsRecordsPageTitle: String { zh ? "记录" : "Records" }
     static var settingsUsagePageTitle: String { zh ? "用量设置" : "Usage Settings" }
     static var settingsCodexAppPathPageTitle: String { zh ? "Codex App 路径设置" : "Codex App Path" }
-    static var settingsUpdatesPageTitle: String { zh ? "更新" : "Updates" }
-    static var settingsUpdatesPageHint: String {
-        zh
-            ? "从这里检查 GitHub Releases 上首个可安装的正式稳定版本，并继续下载或安装当前可用更新。"
-            : "Check the first installable stable release on GitHub Releases here, then continue to download or install the current update."
-    }
-    static var settingsUpdatesCurrentVersionTitle: String { zh ? "当前版本" : "Current Version" }
-    static var settingsUpdatesLatestVersionTitle: String { zh ? "GitHub 最新稳定版本" : "Latest Stable Version on GitHub" }
-    static var settingsUpdatesStatusTitle: String { zh ? "更新状态" : "Update Status" }
-    static var settingsUpdatesUnknownVersion: String { zh ? "尚未检查" : "Not Checked Yet" }
-    static var settingsUpdatesCheckAction: String { zh ? "检查 GitHub 上的最新稳定版本" : "Check the Latest Stable Version on GitHub" }
-    static var settingsUpdatesInstallAction: String { zh ? "继续下载或安装更新" : "Continue Download or Install" }
-    static var settingsUpdatesChecking: String { zh ? "正在检查 GitHub 上的最新稳定版本…" : "Checking the latest stable version on GitHub..." }
-    static var settingsUpdatesIdle: String { zh ? "尚未发起更新检查。" : "No update check has been started yet." }
-    static var settingsUpdatesSourceNote: String {
-        zh
-            ? "运行时会扫描 GitHub Releases 列表，只认非 draft、非 prerelease、且带 dmg/zip 安装包的正式 release。"
-            : "Runtime checks scan the GitHub Releases list and only accept non-draft, non-prerelease releases that ship installable dmg/zip assets."
-    }
-    static var settingsUpdatesReissueLimitNote: String {
-        zh
-            ? "如果你已安装首发 1.1.9，同版本重发不会自动显示为可升级；需要手工下载重发 build。"
-            : "If you already installed the first 1.1.9 build, a same-version reissue will not show up as an upgrade automatically; you must download the reissued build manually."
-    }
-    static func settingsUpdatesUpToDate(_ version: String) -> String {
-        zh ? "当前版本 \(version) 已与 GitHub 上的最新稳定版本一致。" : "The current version \(version) already matches the latest stable version on GitHub."
-    }
-    static func settingsUpdatesAvailable(_ currentVersion: String, _ latestVersion: String) -> String {
-        zh ? "当前版本 \(currentVersion)，GitHub 上可用最新稳定版本 \(latestVersion)。" : "Current version \(currentVersion); the latest stable version on GitHub is \(latestVersion)."
-    }
-    static func settingsUpdatesExecuting(_ version: String) -> String {
-        zh ? "正在处理 \(version) 的更新动作。" : "Processing the update action for \(version)."
-    }
-    static func settingsUpdatesFailed(_ message: String) -> String {
-        zh ? "更新失败：\(message)" : "Update failed: \(message)"
-    }
     static var settingsRecordsPageHint: String {
         zh
             ? "Records 以 Sessions 为主视图，Models 只作为辅区摘要。首屏会先显示内存中的旧快照（如果有），再异步拉取最新增量；手动点击后才会做全量重扫。"

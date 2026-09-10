@@ -15,7 +15,6 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             aggregateRoutedAccount: nil,
             usageDisplayMode: .remaining,
             accountUsageMode: .switchAccount,
-            updateAvailable: false,
             showsUsageText: true
         )
 
@@ -44,8 +43,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             activeProvider: nil,
             aggregateRoutedAccount: nil,
             usageDisplayMode: .used,
-            accountUsageMode: .switchAccount,
-            updateAvailable: false
+            accountUsageMode: .switchAccount
         )
 
         XCTAssertEqual(
@@ -78,7 +76,6 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             aggregateRoutedAccount: nil,
             usageDisplayMode: .used,
             accountUsageMode: .switchAccount,
-            updateAvailable: false,
             showsUsageText: true
         )
 
@@ -109,8 +106,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             activeProvider: nil,
             aggregateRoutedAccount: nil,
             usageDisplayMode: .used,
-            accountUsageMode: .switchAccount,
-            updateAvailable: false
+            accountUsageMode: .switchAccount
         )
 
         XCTAssertEqual(
@@ -135,7 +131,6 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             aggregateRoutedAccount: nil,
             usageDisplayMode: .used,
             accountUsageMode: .switchAccount,
-            updateAvailable: false,
             showsUsageText: true
         )
 
@@ -168,8 +163,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             activeProvider: nil,
             aggregateRoutedAccount: nil,
             usageDisplayMode: .used,
-            accountUsageMode: .switchAccount,
-            updateAvailable: false
+            accountUsageMode: .switchAccount
         )
 
         XCTAssertEqual(
@@ -192,8 +186,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             activeProvider: nil,
             aggregateRoutedAccount: nil,
             usageDisplayMode: .used,
-            accountUsageMode: .switchAccount,
-            updateAvailable: false
+            accountUsageMode: .switchAccount
         )
 
         XCTAssertEqual(
@@ -220,8 +213,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             activeProvider: nil,
             aggregateRoutedAccount: nil,
             usageDisplayMode: .remaining,
-            accountUsageMode: .switchAccount,
-            updateAvailable: false
+            accountUsageMode: .switchAccount
         )
 
         XCTAssertEqual(
@@ -249,8 +241,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             activeProvider: provider,
             aggregateRoutedAccount: aggregate,
             usageDisplayMode: .used,
-            accountUsageMode: .aggregateGateway,
-            updateAvailable: false
+            accountUsageMode: .aggregateGateway
         )
         let withText = MenuBarStatusItemPresentation.make(
             accounts: [],
@@ -258,7 +249,6 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             aggregateRoutedAccount: aggregate,
             usageDisplayMode: .used,
             accountUsageMode: .aggregateGateway,
-            updateAvailable: false,
             showsUsageText: true
         )
 
@@ -307,8 +297,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             activeProvider: provider,
             aggregateRoutedAccount: exhaustedRoute,
             usageDisplayMode: .used,
-            accountUsageMode: .aggregateGateway,
-            updateAvailable: false
+            accountUsageMode: .aggregateGateway
         )
 
         XCTAssertEqual(
@@ -341,60 +330,13 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             activeProvider: provider,
             aggregateRoutedAccount: healthyRoute,
             usageDisplayMode: .used,
-            accountUsageMode: .aggregateGateway,
-            updateAvailable: false
+            accountUsageMode: .aggregateGateway
         )
 
         XCTAssertEqual(
             presentation.icon,
             .usageBars(MenuBarUsageIconSpec(displayPercents: [10, 20]))
         )
-    }
-
-    func testUpdateKeepsSystemSymbolWhileQuotaWarningUsesSystemColoredUsageBars() {
-        let healthy = TokenAccount(
-            email: "healthy@example.com",
-            accountId: "acct_healthy",
-            planType: "plus",
-            primaryUsedPercent: 20,
-            secondaryUsedPercent: 30,
-            isActive: true
-        )
-        let warning = TokenAccount(
-            email: "warning@example.com",
-            accountId: "acct_warning",
-            planType: "plus",
-            primaryUsedPercent: 85,
-            secondaryUsedPercent: 30,
-            isActive: true
-        )
-
-        let updatePresentation = MenuBarStatusItemPresentation.make(
-            accounts: [healthy],
-            activeProvider: nil,
-            aggregateRoutedAccount: nil,
-            usageDisplayMode: .used,
-            accountUsageMode: .switchAccount,
-            updateAvailable: true
-        )
-        let warningPresentation = MenuBarStatusItemPresentation.make(
-            accounts: [warning],
-            activeProvider: nil,
-            aggregateRoutedAccount: nil,
-            usageDisplayMode: .used,
-            accountUsageMode: .switchAccount,
-            updateAvailable: false
-        )
-
-        XCTAssertEqual(updatePresentation.icon, .systemSymbol("arrow.down.circle.fill"))
-        XCTAssertEqual(
-            warningPresentation.icon,
-            .usageBars(MenuBarUsageIconSpec(displayPercents: [85, 30]))
-        )
-        XCTAssertEqual(warningPresentation.emphasis, .warning)
-        XCTAssertNil(warningPresentation.contentTintColor)
-        XCTAssertEqual(updatePresentation.layout, .compact)
-        XCTAssertEqual(warningPresentation.layout, .compact)
     }
 
     func testFallbackProviderStaysCompactWithUsageTextSetting() {
@@ -405,8 +347,7 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             activeProvider: provider,
             aggregateRoutedAccount: nil,
             usageDisplayMode: .used,
-            accountUsageMode: .switchAccount,
-            updateAvailable: false
+            accountUsageMode: .switchAccount
         )
         let withText = MenuBarStatusItemPresentation.make(
             accounts: [],
@@ -414,7 +355,6 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
             aggregateRoutedAccount: nil,
             usageDisplayMode: .used,
             accountUsageMode: .switchAccount,
-            updateAvailable: false,
             showsUsageText: true
         )
 
@@ -424,31 +364,6 @@ final class MenuBarStatusItemPresentationTests: XCTestCase {
         XCTAssertEqual(withText.title, "")
         XCTAssertEqual(withText.layout, .compact)
         XCTAssertEqual(withText.emphasis, .secondary)
-    }
-
-    func testSystemSymbolPriorityStaysCompactWithUsageTextSetting() {
-        let account = TokenAccount(
-            email: "active@example.com",
-            accountId: "acct_active",
-            planType: "plus",
-            primaryUsedPercent: 20,
-            secondaryUsedPercent: 30,
-            isActive: true
-        )
-
-        let presentation = MenuBarStatusItemPresentation.make(
-            accounts: [account],
-            activeProvider: nil,
-            aggregateRoutedAccount: nil,
-            usageDisplayMode: .used,
-            accountUsageMode: .switchAccount,
-            updateAvailable: true,
-            showsUsageText: true
-        )
-
-        XCTAssertEqual(presentation.icon, .systemSymbol("arrow.down.circle.fill"))
-        XCTAssertEqual(presentation.title, "")
-        XCTAssertEqual(presentation.layout, .compact)
     }
 
     func testStatusItemImageUsesTemplateRendering() {

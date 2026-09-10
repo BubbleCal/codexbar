@@ -260,7 +260,6 @@ final class MenuBarStatusItemController: NSObject, NSWindowDelegate {
             rootView: MenuBarView()
                 .environmentObject(TokenStore.shared)
                 .environmentObject(OAuthManager.shared)
-                .environmentObject(UpdateCoordinator.shared)
         )
 
         self.bindState()
@@ -288,13 +287,6 @@ final class MenuBarStatusItemController: NSObject, NSWindowDelegate {
         guard self.cancellables.isEmpty else { return }
 
         TokenStore.shared.objectWillChange
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in
-                self?.scheduleAppearanceRefresh()
-            }
-            .store(in: &self.cancellables)
-
-        UpdateCoordinator.shared.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 self?.scheduleAppearanceRefresh()
@@ -358,7 +350,6 @@ final class MenuBarStatusItemController: NSObject, NSWindowDelegate {
             aggregateRoutedAccount: TokenStore.shared.aggregateRoutedAccount,
             usageDisplayMode: TokenStore.shared.config.openAI.usageDisplayMode,
             accountUsageMode: TokenStore.shared.config.openAI.accountUsageMode,
-            updateAvailable: UpdateCoordinator.shared.pendingAvailability != nil,
             showsUsageText: TokenStore.shared.config.openAI.showsMenuBarUsageText
         )
 
@@ -509,7 +500,6 @@ final class MenuBarStatusItemController: NSObject, NSWindowDelegate {
             rootView: MenuBarView()
                 .environmentObject(TokenStore.shared)
                 .environmentObject(OAuthManager.shared)
-                .environmentObject(UpdateCoordinator.shared)
         )
         self.menuContentViewController = contentViewController
 

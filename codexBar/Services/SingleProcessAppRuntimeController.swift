@@ -23,7 +23,6 @@ protocol MenuHostLegacyCleaning: AnyObject {
 
 extension MenuBarStatusItemController: LifecycleControlling {}
 extension OpenAIUsagePollingService: LifecycleControlling {}
-extension UpdateCoordinator: LifecycleControlling {}
 extension OpenAIOAuthRefreshService: OAuthRefreshLifecycleControlling {}
 extension TokenStore: TokenStoreReloading {}
 extension MenuHostBootstrapService: MenuHostLegacyCleaning {}
@@ -35,7 +34,6 @@ final class SingleProcessAppRuntimeController {
     private let statusItemHost: any LifecycleControlling
     private let usagePolling: any LifecycleControlling
     private let oauthRefresh: any OAuthRefreshLifecycleControlling
-    private let updateCoordinator: any LifecycleControlling
     private let tokenStore: any TokenStoreReloading
     private let legacyMenuHostCleaner: any MenuHostLegacyCleaning
     private let recordEvent: EventRecorder
@@ -44,7 +42,6 @@ final class SingleProcessAppRuntimeController {
         statusItemHost: any LifecycleControlling,
         usagePolling: any LifecycleControlling,
         oauthRefresh: any OAuthRefreshLifecycleControlling,
-        updateCoordinator: any LifecycleControlling,
         tokenStore: any TokenStoreReloading,
         legacyMenuHostCleaner: any MenuHostLegacyCleaning,
         recordEvent: @escaping EventRecorder
@@ -52,7 +49,6 @@ final class SingleProcessAppRuntimeController {
         self.statusItemHost = statusItemHost
         self.usagePolling = usagePolling
         self.oauthRefresh = oauthRefresh
-        self.updateCoordinator = updateCoordinator
         self.tokenStore = tokenStore
         self.legacyMenuHostCleaner = legacyMenuHostCleaner
         self.recordEvent = recordEvent
@@ -63,7 +59,6 @@ final class SingleProcessAppRuntimeController {
             statusItemHost: MenuBarStatusItemController.shared,
             usagePolling: OpenAIUsagePollingService.shared,
             oauthRefresh: OpenAIOAuthRefreshService.shared,
-            updateCoordinator: UpdateCoordinator.shared,
             tokenStore: TokenStore.shared,
             legacyMenuHostCleaner: MenuHostBootstrapService.shared
         ) { type, fields in
@@ -90,7 +85,6 @@ final class SingleProcessAppRuntimeController {
         self.statusItemHost.start()
         self.usagePolling.start()
         self.oauthRefresh.start()
-        self.updateCoordinator.start()
         self.recordEvent(
             "single_process_runtime_services_started",
             ["pid": getpid()]
@@ -98,7 +92,6 @@ final class SingleProcessAppRuntimeController {
     }
 
     func stop() {
-        self.updateCoordinator.stop()
         self.oauthRefresh.stop()
         self.usagePolling.stop()
         self.statusItemHost.stop()

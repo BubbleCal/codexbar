@@ -114,7 +114,6 @@ struct MenuBarStatusItemPresentation: Equatable {
         aggregateRoutedAccount: TokenAccount?,
         usageDisplayMode: CodexBarUsageDisplayMode,
         accountUsageMode: CodexBarOpenAIAccountUsageMode,
-        updateAvailable: Bool,
         showsUsageText: Bool = false
     ) -> MenuBarStatusItemPresentation {
         let isAggregateOpenAI = activeProvider?.kind == .openAIOAuth &&
@@ -124,8 +123,7 @@ struct MenuBarStatusItemPresentation: Equatable {
         let iconAccounts = isAggregateOpenAI ? displayAccount.map { [$0] } ?? [] : accounts
         let iconName = MenuBarIconResolver.iconName(
             accounts: iconAccounts,
-            activeProviderKind: activeProvider?.kind,
-            updateAvailable: updateAvailable
+            activeProviderKind: activeProvider?.kind
         )
 
         let content = self.content(
