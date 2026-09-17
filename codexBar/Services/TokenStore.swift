@@ -153,6 +153,8 @@ final class TokenStore: ObservableObject {
     private let switchJournalStore = SwitchJournalStore()
     private let costSummaryService: LocalCostSummaryService
     private let localCostRefreshWorker: LocalCostRefreshWorker
+    /// 自动触发(启动、load)的成本刷新节流窗口;手动刷新不受限制。
+    static let localCostAutoRefreshInterval: TimeInterval = 2 * 60
     private let openAIAccountGatewayService: OpenAIAccountGatewayControlling
     private let openRouterGatewayService: OpenRouterGatewayControlling
     private let chatCompletionsGatewayService: ChatCompletionsGatewayControlling
@@ -1585,10 +1587,15 @@ final class TokenStore: ObservableObject {
         }
     }
 
+    /// 每次 `load()` 都会走到这里,而 `load()` 在每次打开菜单时都会执行。
+    /// 强制刷新会让每次打开都跑一遍扫描(扫描本身要遍历全部会话日志并驱动进度条),
+    /// 所以只有在还没有可用汇总时才强制,其余情况按 `localCostAutoRefreshInterval` 节流。
     private func refreshLocalCostSummaryIfNeeded() {
+        let hasUsableSummary = self.localCostSummary.updatedAt != nil &&
+            self.isEffectivelyEmptyLocalCostSummary(self.localCostSummary) == false
         self.refreshLocalCostSummary(
-            force: true,
-            minimumInterval: 0,
+            force: hasUsableSummary == false,
+            minimumInterval: Self.localCostAutoRefreshInterval,
             refreshSessionCache: false
         )
     }

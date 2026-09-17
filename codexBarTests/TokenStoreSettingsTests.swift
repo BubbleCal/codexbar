@@ -992,6 +992,64 @@ final class TokenStoreSettingsTests: CodexBarTestCase {
         XCTAssertEqual(try decoder.decode(LocalCostSummary.self, from: cachedData).lifetimeTokens, 23_290_000_000)
     }
 
+    /// 工作线程与主线程都会访问计数,需要加锁。
+    private final class LockedCounter: @unchecked Sendable {
+        private let lock = NSLock()
+        private var count = 0
+
+        var value: Int {
+            self.lock.lock()
+            defer { self.lock.unlock() }
+            return self.count
+        }
+
+        func increment() {
+            self.lock.lock()
+            self.count += 1
+            self.lock.unlock()
+        }
+    }
+
+    func testLoadDoesNotRescanWhenCachedSummaryIsFresh() throws {
+        // 打开菜单会走 store.load();此前 load 会强制重扫,导致每次打开都跑一遍扫描进度条。
+        try self.writeCostSummaryCache(
+            schemaVersion: LocalCostSummary.currentSchemaVersion,
+            updatedAt: ISO8601DateFormatter().string(from: Date())
+        )
+        let callCount = LockedCounter()
+        let store = self.makeTokenStore(
+            localCostRefreshWorker: { _, _, _ in
+                callCount.increment()
+                return LocalCostRefreshOutcome(
+                    summary: nil,
+                    isComplete: true,
+                    mayReplaceLastKnownGood: true,
+                    warningCount: 0,
+                    lastRawSessionScanAt: nil,
+                    latestUsageEventAt: nil,
+                    progress: .zero,
+                    errorMessage: nil
+                )
+            },
+            openRouterCatalogService: OpenRouterModelCatalogServiceSpy(
+                result: .failure(URLError(.notConnectedToInternet))
+            )
+        )
+        self.waitUntil { store.localCostRefreshState.activeStrength == nil }
+        let baseline = callCount.value
+
+        store.load()
+        store.load()
+        self.waitUntil { store.localCostRefreshState.activeStrength == nil }
+
+        XCTAssertEqual(callCount.value, baseline, "缓存新鲜时 load() 不应触发扫描")
+
+        // 手动刷新仍然必须立即重扫。
+        store.refreshLocalCostSummary(force: true, minimumInterval: 0, refreshSessionCache: true)
+        self.waitUntil { callCount.value > baseline }
+        XCTAssertGreaterThan(callCount.value, baseline)
+    }
+
     func testRefreshQueuesAndUpgradesPendingManualRequest() throws {
         try self.writeCostSummaryCache(
             schemaVersion: LocalCostSummary.currentSchemaVersion,
