@@ -241,6 +241,55 @@ final class LocalCostIndexStore: @unchecked Sendable {
         }
     }
 
+    /// 删除索引中已不在磁盘上的文件条目。
+    ///
+    /// Codex 会把会话从 `sessions/` 归档到 `archived_sessions/`。索引以路径为主键,
+    /// 旧路径的事件不会随文件移动而消失,于是同一批 token 会在新旧两条路径下各计一次。
+    /// 每次扫描枚举完磁盘后调用这里把陈旧条目清掉。
+    ///
+    /// - Parameter keptPaths: 本次枚举在磁盘上实际看到的全部路径。
+    /// - Returns: 被删除的文件条目数。
+    @discardableResult
+    func pruneFiles(keeping keptPaths: Set<String>) throws -> Int {
+        // 空集合只可能来自枚举失败,此时清理会抹掉整个索引,必须拒绝。
+        guard keptPaths.isEmpty == false else { return 0 }
+
+        return try self.queue.sync {
+            try self.execute("BEGIN IMMEDIATE TRANSACTION")
+            do {
+                try self.execute(
+                    "CREATE TEMP TABLE IF NOT EXISTS kept_paths (path TEXT PRIMARY KEY NOT NULL)"
+                )
+                try self.execute("DELETE FROM kept_paths")
+
+                let insert = try self.prepare("INSERT OR IGNORE INTO kept_paths (path) VALUES (?1)")
+                defer { sqlite3_finalize(insert) }
+                for path in keptPaths {
+                    try self.reset(insert)
+                    try self.bind(path, to: insert, at: 1)
+                    try self.stepDone(insert)
+                }
+
+                let staleCount = try self.integerScalar(
+                    "SELECT COUNT(*) FROM files WHERE path NOT IN (SELECT path FROM kept_paths)"
+                )
+                guard staleCount > 0 else {
+                    try self.execute("COMMIT")
+                    return 0
+                }
+
+                try self.execute("DELETE FROM events WHERE path NOT IN (SELECT path FROM kept_paths)")
+                try self.execute("DELETE FROM files WHERE path NOT IN (SELECT path FROM kept_paths)")
+                try self.rebuildAggregatesLocked()
+                try self.execute("COMMIT")
+                return staleCount
+            } catch {
+                try? self.execute("ROLLBACK")
+                throw error
+            }
+        }
+    }
+
     func rebuildAggregates() throws {
         try self.queue.sync {
             try self.execute("BEGIN IMMEDIATE TRANSACTION")

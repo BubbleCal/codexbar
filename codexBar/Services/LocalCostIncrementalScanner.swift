@@ -119,6 +119,9 @@ final class LocalCostIncrementalScanner {
         progressHandler: ProgressHandler? = nil
     ) throws -> LocalCostIncrementalScannerResult {
         let files = try self.sessionFiles()
+        // 会话被归档后路径会变,旧路径的聚合不清掉就会和新路径重复计数。
+        // sessionFiles() 每次都完整枚举两个根目录,所以这里可以安全地据此清理。
+        try self.store.pruneFiles(keeping: Set(files.map(\.path)))
         let existingProgress = (try? self.store.progress()) ?? .idle
         let startedAt = Date()
         let totalBytes = files.reduce(Int64(0)) { $0 + $1.size }

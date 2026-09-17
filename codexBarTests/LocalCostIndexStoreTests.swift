@@ -331,6 +331,69 @@ final class LocalCostIndexStoreTests: XCTestCase {
         )
     }
 
+    func testPruneFilesRemovesArchivedDuplicatesFromTotals() throws {
+        // 会话从 sessions/ 归档到 archived_sessions/ 后,旧路径若不清理就会重复计数。
+        let root = try self.makeRoot()
+        let store = try self.makeStore(databaseURL: root.appendingPathComponent("cost-usage.sqlite"))
+        let livePath = "/codex/archived_sessions/moved.jsonl"
+        let stalePath = "/codex/sessions/moved.jsonl"
+
+        for (path, key) in [(stalePath, "stale|event"), (livePath, "live|event")] {
+            try store.commitFileScan(
+                LocalCostFileScanCommit(
+                    path: path,
+                    fileIdentifier: "inode-\(key)",
+                    size: 64,
+                    modificationTime: self.date("2026-04-05T08:10:00Z"),
+                    parsedBytes: 64,
+                    anchorHash: "anchor",
+                    parserStateData: Data("{}".utf8),
+                    isComplete: true,
+                    replaceExistingEvents: true,
+                    events: [self.event(key: key, path: path, input: 100, cachedInput: 0, output: 10)]
+                )
+            )
+        }
+
+        let before = try store.summary(now: self.date("2026-04-05T12:00:00Z")).summary
+        XCTAssertEqual(before.lifetimeTokens, 220, "归档前后两条路径各计一次")
+
+        let removed = try store.pruneFiles(keeping: [livePath])
+
+        XCTAssertEqual(removed, 1)
+        XCTAssertNil(try store.indexedFile(path: stalePath))
+        XCTAssertNotNil(try store.indexedFile(path: livePath))
+        let after = try store.summary(now: self.date("2026-04-05T12:00:00Z")).summary
+        XCTAssertEqual(after.lifetimeTokens, 110, "清理后只剩归档路径这一份")
+    }
+
+    func testPruneFilesIgnoresEmptyKeepSetToSurviveFailedEnumeration() throws {
+        // 枚举失败会得到空集合,此时清理会抹掉整个索引,必须拒绝。
+        let root = try self.makeRoot()
+        let store = try self.makeStore(databaseURL: root.appendingPathComponent("cost-usage.sqlite"))
+        let path = "/codex/sessions/keep.jsonl"
+        try store.commitFileScan(
+            LocalCostFileScanCommit(
+                path: path,
+                fileIdentifier: "inode-keep",
+                size: 64,
+                modificationTime: self.date("2026-04-05T08:10:00Z"),
+                parsedBytes: 64,
+                anchorHash: "anchor",
+                parserStateData: Data("{}".utf8),
+                isComplete: true,
+                replaceExistingEvents: true,
+                events: [self.event(key: "keep|event", path: path, input: 100, cachedInput: 0, output: 10)]
+            )
+        )
+
+        XCTAssertEqual(try store.pruneFiles(keeping: []), 0)
+
+        XCTAssertNotNil(try store.indexedFile(path: path))
+        let summary = try store.summary(now: self.date("2026-04-05T12:00:00Z")).summary
+        XCTAssertEqual(summary.lifetimeTokens, 110)
+    }
+
     private func makeRoot() throws -> URL {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("codexbar-cost-index-store-tests-\(UUID().uuidString)", isDirectory: true)
