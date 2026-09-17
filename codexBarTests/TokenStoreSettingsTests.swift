@@ -1010,6 +1010,37 @@ final class TokenStoreSettingsTests: CodexBarTestCase {
         }
     }
 
+    func testFreshUsageSnapshotIsNotConsideredStaleWithinRefreshInterval() throws {
+        // 菜单打开时按这个判断决定要不要重新拉额度(会转动工具栏指示器)。
+        let interval = OpenAIUsagePollingService.defaultRefreshInterval
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let accountID = "acct_snapshot_freshness"
+        try self.writeOAuthConfig(
+            accountID: accountID,
+            primaryUsedPercent: 40,
+            secondaryUsedPercent: 20,
+            lastChecked: now.addingTimeInterval(-5)
+        )
+        let store = self.makeTokenStore(
+            openRouterCatalogService: OpenRouterModelCatalogServiceSpy(
+                result: .failure(URLError(.notConnectedToInternet))
+            )
+        )
+
+        XCTAssertFalse(
+            store.hasStaleOAuthUsageSnapshot(maxAge: interval, now: now),
+            "5 秒前刚拉过,不应再次触发额度刷新"
+        )
+
+        XCTAssertTrue(
+            store.hasStaleOAuthUsageSnapshot(
+                maxAge: interval,
+                now: now.addingTimeInterval(interval + 1)
+            ),
+            "超过刷新间隔后应判定为过期"
+        )
+    }
+
     func testLoadDoesNotRescanWhenCachedSummaryIsFresh() throws {
         // 打开菜单会走 store.load();此前 load 会强制重扫,导致每次打开都跑一遍扫描进度条。
         try self.writeCostSummaryCache(

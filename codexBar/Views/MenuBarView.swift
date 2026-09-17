@@ -2333,7 +2333,7 @@ struct MenuBarView: View {
 
     private func triggerRefreshOnOpenIfNeeded() {
         guard openRefreshGate.shouldTriggerRefresh(isRefreshing: isRefreshing) else { return }
-        Task { await refresh(origin: .menuOpen, force: true, announceResult: false) }
+        Task { await refresh(origin: .menuOpen, force: false, announceResult: false) }
     }
 
     private func refresh(
@@ -2344,26 +2344,18 @@ struct MenuBarView: View {
         if origin == .manual {
             store.refreshCodexModelCatalog()
         }
-        let shouldRefreshOAuth = force || store.hasStaleOAuthUsageSnapshot(maxAge: usageRefreshInterval)
-        let shouldRefreshLocalCost = force || store.localCostSummary.updatedAt == nil
+        // 成本刷新自带节流(MenuBarRefreshOrigin.localCostMinimumInterval),无条件请求即可,
+        // 不能和下面的额度刷新共用一个早退条件,否则额度没过期时成本也会被一起跳过。
+        now = Date()
+        store.refreshLocalCostSummary(
+            force: origin.forcesLocalCostRefresh,
+            minimumInterval: origin.localCostMinimumInterval,
+            refreshSessionCache: origin.refreshesSessionCache
+        )
+        refreshRunningThreadAttribution()
 
-        guard shouldRefreshOAuth || shouldRefreshLocalCost else {
-            return
-        }
-
-        var didRequestLocalCostRefresh = false
-        if shouldRefreshLocalCost {
-            now = Date()
-            didRequestLocalCostRefresh = true
-            store.refreshLocalCostSummary(
-                force: origin.forcesLocalCostRefresh,
-                minimumInterval: origin.localCostMinimumInterval,
-                refreshSessionCache: origin.refreshesSessionCache
-            )
-            refreshRunningThreadAttribution()
-        }
-
-        if shouldRefreshOAuth == false {
+        // 额度要打网络请求并转动工具栏指示器,快照没过期就不重复刷。
+        guard force || store.hasStaleOAuthUsageSnapshot(maxAge: usageRefreshInterval) else {
             return
         }
 
@@ -2376,13 +2368,6 @@ struct MenuBarView: View {
         let outcomes = await WhamService.shared.refreshAll(store: store)
         store.load()
         now = Date()
-        if didRequestLocalCostRefresh == false {
-            store.refreshLocalCostSummary(
-                force: origin.forcesLocalCostRefresh,
-                minimumInterval: origin.localCostMinimumInterval,
-                refreshSessionCache: origin.refreshesSessionCache
-            )
-        }
         refreshRunningThreadAttribution()
         self.applyRefreshFeedback(
             announceResult: announceResult,
